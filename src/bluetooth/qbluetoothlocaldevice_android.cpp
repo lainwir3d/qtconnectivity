@@ -30,7 +30,6 @@
 #include "qbluetoothlocaldevice_p.h"
 #include "android/jnithreadhelper.h"
 #include <android/log.h>
-#include <QJNIEnvironment>
 
 QT_BEGIN_NAMESPACE
 

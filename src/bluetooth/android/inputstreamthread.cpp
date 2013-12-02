@@ -43,7 +43,7 @@
 #include "android/inputstreamthread_p.h"
 #include "qbluetoothsocket_p.h"
 
-//QTM_BEGIN_NAMESPACE
+QT_BEGIN_NAMESPACE
 
 
 InputStreamThread::InputStreamThread(QBluetoothSocketPrivate *socket)
@@ -60,4 +60,4 @@ void InputStreamThread::run()
 }
 
 
-//QTM_END_NAMESPACE
+QT_END_NAMESPACE

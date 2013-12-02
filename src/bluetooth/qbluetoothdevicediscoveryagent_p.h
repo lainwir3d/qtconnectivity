@@ -43,7 +43,7 @@
 #define QBLUETOOTHDEVICEDISCOVERYAGENT_P_H
 
 #include "qbluetoothdevicediscoveryagent.h"
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
 #include "android/devicediscoverybroadcastreceiver_p.h"
 #endif
 
@@ -89,7 +89,7 @@ public:
 #endif
 
 private:
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
     DeviceDiscoveryBroadcastReceiver* bReceiver;
 #endif
     QList<QBluetoothDeviceInfo> discoveredDevices;

@@ -48,9 +48,6 @@
 #include "qbluetoothlocaldevice_p.h"
 #include "android/jnithreadhelper_p.h"
 
-
-#define QTM_DEVICEDISCOVERY_DEBUG
-
 QT_BEGIN_NAMESPACE
 
 QBluetoothDeviceDiscoveryAgentPrivate::QBluetoothDeviceDiscoveryAgentPrivate(const QBluetoothAddress &deviceAdapter)

@@ -47,6 +47,8 @@
 #include "QtGlobal"
 #include <QDebug>
 
+QT_BEGIN_NAMESPACE
+
 class JNIThreadHelper
 {
 public:
@@ -65,5 +67,7 @@ private:
 
     JNIEnv* m_env;
 };
+
+QT_END_NAMESPACE
 
 #endif // JNITHREADHELPER_H

@@ -44,6 +44,7 @@
 #include "qbluetoothdeviceinfo.h"
 #include "qbluetoothaddress.h"
 
+QT_BEGIN_NAMESPACE
 
 DeviceDiscoveryBroadcastReceiver::DeviceDiscoveryBroadcastReceiver(QObject* parent): AndroidBroadcastReceiver(parent)
 {
@@ -107,5 +108,5 @@ void DeviceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject /*context*
     }
 }
 
-//#include "moc_devicediscoverybroadcastreceiver.cpp"
+QT_END_NAMESPACE
 

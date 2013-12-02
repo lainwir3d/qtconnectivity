@@ -96,7 +96,7 @@ config_bluez:qtHaveModule(dbus) {
 
 } else:android {
     include(android/android.pri)
-    DEFINES += QTM_ANDROID_BLUETOOTH
+    DEFINES += QT_ANDROID_BLUETOOTH
     QT += gui-private
     QT += androidextras
 

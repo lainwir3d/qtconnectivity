@@ -43,9 +43,10 @@
 #include <android/log.h>
 #include "android/androidbroadcastreceiver_p.h"
 #include "android/jnithreadhelper_p.h"
-//#include <QtGui/QPlatformNativeInterface>
 #include <qpa/qplatformnativeinterface.h>
 #include <QtGui/QGuiApplication>
+
+QT_BEGIN_NAMESPACE
 
 class QPlatformNativeInterface;
 
@@ -154,6 +155,8 @@ void AndroidBroadcastReceiver::addAction(const QString &action)
     jmethodID registerReceiverMethodID = env->GetMethodID(jContextClass, "registerReceiver", "(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;");
     env->CallObjectMethod(jActivityObject, registerReceiverMethodID, jQtBroadcastReceiverObject, jIntentFilterObject);
 }
+
+QT_END_NAMESPACE
 
 #ifdef __cplusplus
 extern "C" {

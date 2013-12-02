@@ -47,7 +47,7 @@
 #ifdef QT_QNX_BLUETOOTH
 #include "qnx/ppshelpers_p.h"
 #endif
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
 #include "android/inputstreamthread_p.h"
 #include <jni.h>
 #endif
@@ -97,7 +97,7 @@ public:
 #else
     void connectToService(const QBluetoothAddress &address, quint16 port, QIODevice::OpenMode openMode);
 #endif
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
     void connectToServiceConc(const QBluetoothAddress &address, quint16 port, QIODevice::OpenMode openMode);
     jobject socketObject;
     jobject remoteDeviceObject;
@@ -156,7 +156,7 @@ public:
     void _q_serviceDiscovered(const QBluetoothServiceInfo &service);
     void _q_discoveryFinished();
 
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
     jobject inputStream;
     jobject outputStream;
     InputStreamThread *inputThread;

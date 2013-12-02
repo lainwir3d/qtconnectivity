@@ -44,9 +44,8 @@
 #define INPUTSTREAMTHREAD_H
 
 #include <QThread>
-//#include "qmobilityglobal.h"
 
-//QTM_BEGIN_NAMESPACE
+QT_BEGIN_NAMESPACE
 
 class QBluetoothSocketPrivate;
 
@@ -64,6 +63,6 @@ private:
     QBluetoothSocketPrivate *m_socket_p;
 };
 
-//QTM_END_NAMESPACE
+QT_END_NAMESPACE
 
 #endif // INPUTSTREAMTHREAD_H

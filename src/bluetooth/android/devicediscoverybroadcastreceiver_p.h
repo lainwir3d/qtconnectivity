@@ -46,7 +46,7 @@
 #include "android/androidbroadcastreceiver_p.h"
 #include "qbluetoothdevicediscoveryagent.h"
 
-QT_BEGIN_HEADER
+QT_BEGIN_NAMESPACE
 
 class QBluetoothDeviceInfo;
 
@@ -64,5 +64,5 @@ signals:
     void canceled();
 };
 
-QT_END_HEADER
+QT_END_NAMESPACE
 #endif // DEVICEDISCOVERYBROADCASTRECEIVER_H

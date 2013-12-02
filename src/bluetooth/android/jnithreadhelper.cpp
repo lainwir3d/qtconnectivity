@@ -42,6 +42,7 @@
 
 #include "android/jnithreadhelper_p.h"
 
+QT_BEGIN_NAMESPACE
 
 JavaVM* JNIThreadHelper::m_jvm = NULL;
 jclass JNIThreadHelper::m_appContextClass = NULL;
@@ -71,3 +72,5 @@ jclass JNIThreadHelper::appContextClass()
 {
     return m_appContextClass;
 }
+
+QT_END_NAMESPACE

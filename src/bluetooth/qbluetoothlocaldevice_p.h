@@ -65,7 +65,7 @@ QT_END_NAMESPACE
 #include <QSocketNotifier>
 #include "qnx/ppshelpers_p.h"
 #endif
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
 #include <jni.h>
 #endif
 
@@ -73,7 +73,7 @@ QT_BEGIN_NAMESPACE
 
 class QBluetoothAddress;
 
-#ifdef QTM_ANDROID_BLUETOOTH
+#ifdef QT_ANDROID_BLUETOOTH
 class QBluetoothLocalDevicePrivate{
 public:
     static jclass btAdapterClass;

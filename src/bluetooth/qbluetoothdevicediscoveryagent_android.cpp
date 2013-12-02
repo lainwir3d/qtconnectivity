@@ -55,6 +55,7 @@ QT_BEGIN_NAMESPACE
 
 QBluetoothDeviceDiscoveryAgentPrivate::QBluetoothDeviceDiscoveryAgentPrivate(const QBluetoothAddress &deviceAdapter)
 {
+    Q_UNUSED(deviceAdapter)
     bReceiver = NULL;
 }
 

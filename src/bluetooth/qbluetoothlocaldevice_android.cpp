@@ -105,6 +105,7 @@ QBluetoothLocalDevice::QBluetoothLocalDevice(QObject *parent)
 QBluetoothLocalDevice::QBluetoothLocalDevice(const QBluetoothAddress &address, QObject *parent)
 : QObject(parent)
 {
+    Q_UNUSED(address)
 }
 
 QString QBluetoothLocalDevice::name() const

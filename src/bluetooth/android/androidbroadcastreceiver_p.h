@@ -75,7 +75,7 @@ public:
     AndroidBroadcastReceiver(QObject* parent = 0);
     virtual ~AndroidBroadcastReceiver();
 
-    void addAction(QString filter);
+    void addAction(const QString &filter);
     static void initialize(JNIThreadHelper& environment, jclass appClass, jobject mainActivity);
     static void loadJavaClass(JNIEnv*);
 

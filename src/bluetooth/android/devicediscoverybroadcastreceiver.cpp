@@ -47,12 +47,12 @@
 
 DeviceDiscoveryBroadcastReceiver::DeviceDiscoveryBroadcastReceiver(QObject* parent): AndroidBroadcastReceiver(parent)
 {
-   addAction("android.bluetooth.device.action.FOUND");
-   addAction("android.bluetooth.adapter.action.DISCOVERY_STARTED");
-   addAction("android.bluetooth.adapter.action.DISCOVERY_FINISHED");
+   addAction(QStringLiteral("android.bluetooth.device.action.FOUND"));
+   addAction(QStringLiteral("android.bluetooth.adapter.action.DISCOVERY_STARTED"));
+   addAction(QStringLiteral("android.bluetooth.adapter.action.DISCOVERY_FINISHED"));
 }
 
-void DeviceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobject intent)
+void DeviceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject /*context*/, jobject intent)
 {
     __android_log_print(ANDROID_LOG_DEBUG,"Qt", "DeviceDiscoveryBroadcastReceiver::onReceive() - event.");
 
@@ -68,11 +68,11 @@ void DeviceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject context, j
     QString actionString = QString::fromUtf16(actionChar, env->GetStringLength(actionJString));
     env->ReleaseStringChars(actionJString, actionChar);
 
-    if (actionString == "android.bluetooth.adapter.action.DISCOVERY_FINISHED" ) {
+    if (actionString == QStringLiteral("android.bluetooth.adapter.action.DISCOVERY_FINISHED") ) {
         emit finished();
-    } else if (actionString == "android.bluetooth.adapter.action.DISCOVERY_STARTED" ) {
+    } else if (actionString == QStringLiteral("android.bluetooth.adapter.action.DISCOVERY_STARTED") ) {
 
-    } else if (actionString == "android.bluetooth.device.action.FOUND") {
+    } else if (actionString == QStringLiteral("android.bluetooth.device.action.FOUND")) {
         jstring DEVICE = env->NewStringUTF("android.bluetooth.device.extra.DEVICE");
         jobject bluetoothDeviceObject = env->CallObjectMethod(intent, getParcelableExtraID, DEVICE);
 

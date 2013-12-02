@@ -57,7 +57,7 @@ jobject AndroidBroadcastReceiver::jActivityObject = NULL;
 jclass AndroidBroadcastReceiver::jQtBroadcastReceiverClass = NULL;
 jclass AndroidBroadcastReceiver::jIntentFilterClass = NULL;
 
-void AndroidBroadcastReceiver::initialize(JNIThreadHelper& env, jclass appClass, jobject mainActivity)
+void AndroidBroadcastReceiver::initialize(JNIThreadHelper& env, jclass /*appClass*/, jobject mainActivity)
 {
     jActivityObject = mainActivity;
 
@@ -140,7 +140,7 @@ void AndroidBroadcastReceiver::unregisterReceiver()
     env->CallObjectMethod(jActivityObject, unregisterReceiverMethodID, jQtBroadcastReceiverObject);
 }
 
-void AndroidBroadcastReceiver::addAction(QString action)
+void AndroidBroadcastReceiver::addAction(const QString &action)
 {
     if (jActivityObject==NULL) return;
 

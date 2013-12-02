@@ -53,8 +53,10 @@ InputStreamThread::InputStreamThread(QBluetoothSocketPrivate *socket)
 
 void InputStreamThread::run()
 {
+    qint32 byte;
+    Q_UNUSED(byte)
     while (m_socket_p->state == QBluetoothSocket::ConnectedState)
-        qint32 byte = m_socket_p->read();
+        byte = m_socket_p->read();
 }
 
 

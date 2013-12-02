@@ -97,8 +97,8 @@ jobject defineClass() {
 }
 */
 QBluetoothSocketPrivate::QBluetoothSocketPrivate():
-    remoteDeviceObject(0),
     socketObject(0),
+    remoteDeviceObject(0),
     inputStream(0),
     outputStream(0)
 {

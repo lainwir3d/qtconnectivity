@@ -40,10 +40,10 @@
 **
 ****************************************************************************/
 
-#include "jnithreadhelper.h"
+#include "android/jnithreadhelper_p.h"
 #include <qbluetoothlocaldevice_p.h>
 #include <android/log.h>
-#include "androidbroadcastreceiver.h"
+#include "android/androidbroadcastreceiver_p.h"
 
 
 Q_DECL_EXPORT JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)

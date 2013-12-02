@@ -1,13 +1,11 @@
-HEADERS += android/inputstreamthread.h \
-           android/devicediscoverybroadcastreceiver.h
+PRIVATE_HEADERS += android/inputstreamthread_p.h \
+           android/devicediscoverybroadcastreceiver_p.h \
+           android/jnithreadhelper_p.h \
+           android/androidbroadcastreceiver_p.h
 
 SOURCES += android/inputstreamthread.cpp \
-           android/devicediscoverybroadcastreceiver.cpp
-
-HEADERS += android/jnithreadhelper.h \
-           android/androidbroadcastreceiver.h
-
-SOURCES += android/jnithreadhelper.cpp \
+           android/devicediscoverybroadcastreceiver.cpp \
+           android/jnithreadhelper.cpp \
            android/jni_android.cpp \
            android/androidbroadcastreceiver.cpp
 

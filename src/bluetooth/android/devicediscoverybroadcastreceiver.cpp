@@ -40,7 +40,7 @@
 **
 ****************************************************************************/
 
-#include "devicediscoverybroadcastreceiver.h"
+#include "android/devicediscoverybroadcastreceiver_p.h"
 #include "qbluetoothdeviceinfo.h"
 #include "qbluetoothaddress.h"
 
@@ -107,5 +107,5 @@ void DeviceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject context, j
     }
 }
 
-#include "moc_devicediscoverybroadcastreceiver.cpp"
+//#include "moc_devicediscoverybroadcastreceiver.cpp"
 

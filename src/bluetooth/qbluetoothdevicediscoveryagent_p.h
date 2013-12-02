@@ -44,7 +44,7 @@
 
 #include "qbluetoothdevicediscoveryagent.h"
 #ifdef QTM_ANDROID_BLUETOOTH
-#include "android/devicediscoverybroadcastreceiver.h"
+#include "android/devicediscoverybroadcastreceiver_p.h"
 #endif
 
 #include <QVariantMap>

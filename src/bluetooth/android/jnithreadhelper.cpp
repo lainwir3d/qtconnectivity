@@ -40,7 +40,7 @@
 **
 ****************************************************************************/
 
-#include "jnithreadhelper.h"
+#include "android/jnithreadhelper_p.h"
 
 
 JavaVM* JNIThreadHelper::m_jvm = NULL;

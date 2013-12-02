@@ -40,7 +40,7 @@
 **
 ****************************************************************************/
 
-#include "inputstreamthread.h"
+#include "android/inputstreamthread_p.h"
 #include "qbluetoothsocket_p.h"
 
 //QTM_BEGIN_NAMESPACE

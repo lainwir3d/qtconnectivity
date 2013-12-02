@@ -47,7 +47,7 @@
 #include <QTime>
 #include <string.h>
 #include <QtConcurrentRun>
-#include "android/jnithreadhelper.h"
+#include "android/jnithreadhelper_p.h"
 
 
 QT_BEGIN_NAMESPACE

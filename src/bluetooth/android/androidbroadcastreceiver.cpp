@@ -41,8 +41,8 @@
 ****************************************************************************/
 
 #include <android/log.h>
-#include "androidbroadcastreceiver.h"
-#include "jnithreadhelper.h"
+#include "android/androidbroadcastreceiver_p.h"
+#include "android/jnithreadhelper_p.h"
 //#include <QtGui/QPlatformNativeInterface>
 #include <qpa/qplatformnativeinterface.h>
 #include <QtGui/QGuiApplication>

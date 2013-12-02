@@ -40,63 +40,29 @@
 **
 ****************************************************************************/
 
-#ifndef JNIBROADCASTRECEIVER_H
-#define JNIBROADCASTRECEIVER_H
-#include <jni.h>
-#include <QtCore>
-#include <android/log.h>
-#include "jnithreadhelper.h"
+#ifndef DEVICEDISCOVERYBROADCASTRECEIVER_H
+#define DEVICEDISCOVERYBROADCASTRECEIVER_H
 
-/* Header for class eu_licentia_necessitas_industrius_QtBroadcastReceiver */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/*
- * Class:     eu_licentia_necessitas_industrius_QtBroadcastReceiver
- * Method:    jniOnReceive
- * Signature: (ILandroid/content/Context;Landroid/content/Intent;)V
- */
-JNIEXPORT void JNICALL Java_eu_licentia_necessitas_industrius_QtBroadcastReceiver_jniOnReceive
-  (JNIEnv *, jobject, jint, jobject, jobject);
-
-#ifdef __cplusplus
-}
-#endif
+#include "android/androidbroadcastreceiver_p.h"
+#include "qbluetoothdevicediscoveryagent.h"
 
 QT_BEGIN_HEADER
 
-QT_BEGIN_NAMESPACE
+class QBluetoothDeviceInfo;
 
-
-class AndroidBroadcastReceiver: public QObject
+class DeviceDiscoveryBroadcastReceiver : public AndroidBroadcastReceiver
 {
     Q_OBJECT
 public:
-    AndroidBroadcastReceiver(QObject* parent = 0);
-    virtual ~AndroidBroadcastReceiver();
+    DeviceDiscoveryBroadcastReceiver(QObject* parent = 0);
+    virtual void onReceive(JNIEnv *env, jobject context, jobject intent);
 
-    void addAction(QString filter);
-    static void initialize(JNIThreadHelper& environment, jclass appClass, jobject mainActivity);
-    static void loadJavaClass(JNIEnv*);
-
-private:
-    friend void Java_eu_licentia_necessitas_industrius_QtBroadcastReceiver_jniOnReceive(JNIEnv *, jobject, jint, jobject, jobject);
-    virtual void onReceive(JNIEnv *env, jobject context, jobject intent)=0;
-
-    void unregisterReceiver();
-    static void defineJavaClass(JNIThreadHelper&, jclass);
-
-    jobject jQtBroadcastReceiverObject;
-    jobject jIntentFilterObject;
-
-    static jclass jIntentFilterClass;
-    static jclass jQtBroadcastReceiverClass;
-    static jobject jActivityObject;
+signals:
+    void deviceDiscovered(const QBluetoothDeviceInfo &info);
+    void finished();
+    void error(QBluetoothDeviceDiscoveryAgent::Error error);
+    void canceled();
 };
 
-QT_END_NAMESPACE
-
 QT_END_HEADER
-
-
-#endif // JNIBROADCASTRECEIVER_H
+#endif // DEVICEDISCOVERYBROADCASTRECEIVER_H

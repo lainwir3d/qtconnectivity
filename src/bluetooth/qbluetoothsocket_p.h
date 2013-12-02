@@ -48,7 +48,7 @@
 #include "qnx/ppshelpers_p.h"
 #endif
 #ifdef QTM_ANDROID_BLUETOOTH
-#include "android/inputstreamthread.h"
+#include "android/inputstreamthread_p.h"
 #include <jni.h>
 #endif
 

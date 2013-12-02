@@ -46,7 +46,7 @@
 #include "qbluetoothuuid.h"
 #include "qbluetoothdeviceinfo.h"
 #include "qbluetoothlocaldevice_p.h"
-#include "android/jnithreadhelper.h"
+#include "android/jnithreadhelper_p.h"
 
 
 #define QTM_DEVICEDISCOVERY_DEBUG

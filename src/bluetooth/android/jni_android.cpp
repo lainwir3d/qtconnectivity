@@ -43,12 +43,9 @@
 #include "android/jnithreadhelper_p.h"
 #include <qbluetoothlocaldevice_p.h>
 #include <android/log.h>
-#include "android/androidbroadcastreceiver_p.h"
-
 
 Q_DECL_EXPORT JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
 {
-    //QtConnectivityJni::UnionJNIEnvToVoid uenv;
     void* venv = NULL;
     JNIEnv* nativeEnvironment = NULL;
 
@@ -67,10 +64,18 @@ Q_DECL_EXPORT JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
     {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class android.app.Application");
         return JNI_FALSE;
-    }else{
+    } else {
         qtApplicationC = (jclass)nativeEnvironment->NewGlobalRef(qtApplicationC);
     }
-    JNIThreadHelper::setAppContextClass(qtApplicationC);
+    //JNIThreadHelper::setAppContextClass(qtApplicationC);
+    jclass jQtBroadcastReceiverClass = nativeEnvironment->FindClass("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver");
+    if (jQtBroadcastReceiverClass == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt","Cannot find org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver111");
+        nativeEnvironment->ExceptionClear();
+        nativeEnvironment->DeleteLocalRef(jQtBroadcastReceiverClass);
+        return JNI_VERSION_1_4;
+    }
+    __android_log_print(ANDROID_LOG_FATAL,"Qt","Cannot find org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver2222");
 
     /*
     jclass qtNativeClass = nativeEnvironment->FindClass("org/kde/necessitas/industrius/QtNative");
@@ -78,17 +83,5 @@ Q_DECL_EXPORT JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
     jobject mainContext = nativeEnvironment->CallStaticObjectMethod(qtNativeClass, activityID);
     */
 
-    QBluetoothLocalDevicePrivate::initialize(nativeEnvironment);
-    AndroidBroadcastReceiver::loadJavaClass(nativeEnvironment);
-
     return JNI_VERSION_1_4;
 }
-
-/*
-JNIEXPORT void JNICALL Java_JNIRunnable_jniRun(JNIEnv *env, jobject javaObject, jint qtObject){
-    env = env;
-    reinterpret_cast<QBluetoothSocketPrivate*>(qtObject)->jniCallback();
-}
-static JNINativeMethod methods[] = {
-    {"jniRun",    "(I)V", (void *)&Java_JNIRunnable_jniRun},
-};*/

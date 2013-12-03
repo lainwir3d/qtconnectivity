@@ -1,6 +1,5 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Lauri Laanmets (Proekspert AS) <lauri.laanmets@eesti.ee>
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
@@ -40,53 +39,28 @@
 **
 ****************************************************************************/
 
-#ifndef JNIBROADCASTRECEIVER_H
-#define JNIBROADCASTRECEIVER_H
-#include <jni.h>
-#include <QtCore>
-#include <android/log.h>
-#include "android/jnithreadhelper_p.h"
-#include <QAndroidJniObject>
+#include "android/androidbroadcastreceiver_p.h"
+#include <QBluetoothLocalDevice>
 
-/* Header for class eu_licentia_necessitas_industrius_QtBroadcastReceiver */
-#ifdef __cplusplus
-extern "C" {
-#endif
-/*
- * Class:     eu_licentia_necessitas_industrius_QtBroadcastReceiver
- * Method:    jniOnReceive
- * Signature: (ILandroid/content/Context;Landroid/content/Intent;)V
- */
-JNIEXPORT void JNICALL Java_eu_licentia_necessitas_industrius_QtBroadcastReceiver_jniOnReceive
-  (JNIEnv *, jobject, jint, jobject, jobject);
-
-#ifdef __cplusplus
-}
-#endif
+#ifndef LOCALDEVICEBROADCASTRECEIVER_H
+#define LOCALDEVICEBROADCASTRECEIVER_H
 
 QT_BEGIN_NAMESPACE
 
-class AndroidBroadcastReceiver: public QObject
+class LocalDeviceBroadcastReceiver : public AndroidBroadcastReceiver
 {
     Q_OBJECT
 public:
-    AndroidBroadcastReceiver(QObject* parent = 0);
-    virtual ~AndroidBroadcastReceiver();
+    explicit LocalDeviceBroadcastReceiver(QObject *parent = 0);
+    virtual ~LocalDeviceBroadcastReceiver() {}
+    virtual void onReceive(JNIEnv *env, jobject context, jobject intent);
 
-    void addAction(const QString &filter);
-    bool isValid() const;
-
-protected:
-    friend void Java_eu_licentia_necessitas_industrius_QtBroadcastReceiver_jniOnReceive(JNIEnv *, jobject, jint, jobject, jobject);
-    virtual void onReceive(JNIEnv *env, jobject context, jobject intent) = 0;
-
-    void unregisterReceiver();
-
-    QAndroidJniObject activityObject;
-    QAndroidJniObject intentFilterObject;
-    QAndroidJniObject broadcastReceiverObject;
-    bool valid;
+signals:
+    void hostModeStateChanged(QBluetoothLocalDevice::HostMode state);
+private:
+    int previousScanMode;
 };
 
 QT_END_NAMESPACE
-#endif // JNIBROADCASTRECEIVER_H
+
+#endif // LOCALDEVICEBROADCASTRECEIVER_H

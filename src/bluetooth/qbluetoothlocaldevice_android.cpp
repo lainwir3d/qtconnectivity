@@ -44,151 +44,253 @@
 #include "qbluetoothaddress.h"
 #include "qbluetoothlocaldevice_p.h"
 #include "android/jnithreadhelper_p.h"
+#include "android/localdevicebroadcastreceiver_p.h"
 #include <android/log.h>
+#include <QAndroidJniObject>
+#include <QAndroidJniEnvironment>
 
 QT_BEGIN_NAMESPACE
 
-jclass QBluetoothLocalDevicePrivate::btAdapterClass=NULL;
-jobject QBluetoothLocalDevicePrivate::btAdapterObject=NULL;
-
-void QBluetoothLocalDevicePrivate::initialize(JNIEnv *env)
+QBluetoothLocalDevicePrivate::QBluetoothLocalDevicePrivate(
+        QBluetoothLocalDevice *q, const QBluetoothAddress &address)
+    : q_ptr(q), obj(0)
 {
-    btAdapterClass = env->FindClass("android/bluetooth/BluetoothAdapter");
-    if (btAdapterClass == NULL)
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class android/bluetooth/BluetoothAdapter");
-    else
-        btAdapterClass = (jclass)env->NewGlobalRef(btAdapterClass);
+    initialize(address);
+
+    receiver = new LocalDeviceBroadcastReceiver(q_ptr);
+    QObject::connect(receiver, SIGNAL(hostModeStateChanged(QBluetoothLocalDevice::HostMode)),
+                     q, SIGNAL(hostModeStateChanged(QBluetoothLocalDevice::HostMode)));
+}
+
+
+QBluetoothLocalDevicePrivate::~QBluetoothLocalDevicePrivate()
+{
+    delete receiver;
+    delete obj;
+}
+
+QAndroidJniObject *QBluetoothLocalDevicePrivate::adapter()
+{
+    return obj;
+}
+
+void QBluetoothLocalDevicePrivate::initialize(const QBluetoothAddress &address)
+{
+    QAndroidJniEnvironment env;
+
+    jclass btAdapterClass = env->FindClass("android/bluetooth/BluetoothAdapter");
+    if (btAdapterClass == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"QtBluetooth", "Native registration unable to find class android/bluetooth/BluetoothAdapter");
+        return;
+    }
 
     jmethodID getDefaultAdapterID = env->GetStaticMethodID(btAdapterClass, "getDefaultAdapter", "()Landroid/bluetooth/BluetoothAdapter;");
-    if (getDefaultAdapterID == NULL)
+    if (getDefaultAdapterID == NULL) {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to get method ID: getDefaultAdapter of android/bluetooth/BluetoothAdapter");
+        return;
+    }
 
-    btAdapterObject = env->CallStaticObjectMethod(btAdapterClass, getDefaultAdapterID);
-    if (btAdapterObject == NULL)
+
+    jobject btAdapterObject = env->CallStaticObjectMethod(btAdapterClass, getDefaultAdapterID);
+    if (btAdapterObject == NULL) {
         __android_log_print(ANDROID_LOG_FATAL,"Qt", "Device does not support Bluetooth");
+        env->DeleteLocalRef(btAdapterClass);
+        return;
+    }
 
-    btAdapterObject = env->NewGlobalRef(btAdapterObject);
+    obj = new QAndroidJniObject(btAdapterObject);
+    if (!obj->isValid()) {
+        delete obj;
+        obj = 0;
+    } else {
+        if (!address.isNull()) {
+            const QString localAddress = obj->callObjectMethod("getAddress", "()Ljava/lang/String;").toString();
+            if (localAddress != address.toString()) {
+                //passed address not local one -> invalid
+                delete obj;
+                obj = 0;
+            }
+        }
+    }
+
+    env->DeleteLocalRef(btAdapterObject);
+    env->DeleteLocalRef(btAdapterClass);
 }
 
+//TODO: remove/shift function
 bool QBluetoothLocalDevicePrivate::startDiscovery()
 {
-    JNIThreadHelper env;
+//    JNIThreadHelper env;
 
-    jmethodID startDiscoveryID = env->GetMethodID(btAdapterClass, "startDiscovery", "()Z");
-    jboolean ret = env->CallBooleanMethod(btAdapterObject, startDiscoveryID);
+//    jmethodID startDiscoveryID = env->GetMethodID(btAdapterClass, "startDiscovery", "()Z");
+//    jboolean ret = env->CallBooleanMethod(btAdapterObject, startDiscoveryID);
 
-    return ret;
+//    return ret;
+
+    //TODO
+    return true;
 }
+
+//TODO: remove/shift function
 bool QBluetoothLocalDevicePrivate::cancelDiscovery()
 {
-    JNIThreadHelper env;
+//    JNIThreadHelper env;
 
-    jmethodID cancelDiscoveryID = env->GetMethodID(btAdapterClass, "cancelDiscovery", "()Z");
-    jboolean ret = env->CallBooleanMethod(btAdapterObject, cancelDiscoveryID);
+//    jmethodID cancelDiscoveryID = env->GetMethodID(btAdapterClass, "cancelDiscovery", "()Z");
+//    jboolean ret = env->CallBooleanMethod(btAdapterObject, cancelDiscoveryID);
 
-    return ret;
+    //TODO
+    return true;
 }
+
+//TODO: remove/shift function
 bool QBluetoothLocalDevicePrivate::isDiscovering()
 {
-    JNIThreadHelper env;
-    jmethodID isDiscoveringID = env->GetMethodID(btAdapterClass, "isDiscovering", "()Z");
-    jboolean ret = env->CallBooleanMethod(btAdapterObject, isDiscoveringID);
-    return ret;
+//    JNIThreadHelper env;
+//    jmethodID isDiscoveringID = env->GetMethodID(btAdapterClass, "isDiscovering", "()Z");
+//    jboolean ret = env->CallBooleanMethod(btAdapterObject, isDiscoveringID);
+//    return ret;
+    //TODO
+    return true;
+}
+
+bool QBluetoothLocalDevicePrivate::isValid() const
+{
+   return obj ? true : false;
 }
 
 
 QBluetoothLocalDevice::QBluetoothLocalDevice(QObject *parent)
-:   QObject(parent)
+:   QObject(parent),
+    d_ptr(new QBluetoothLocalDevicePrivate(this, QBluetoothAddress()))
 {
 }
 
 QBluetoothLocalDevice::QBluetoothLocalDevice(const QBluetoothAddress &address, QObject *parent)
-: QObject(parent)
+:   QObject(parent),
+    d_ptr(new QBluetoothLocalDevicePrivate(this, address))
 {
-    Q_UNUSED(address)
 }
 
 QString QBluetoothLocalDevice::name() const
 {
-    if (d_ptr->btAdapterObject != 0) {
-        JNIThreadHelper env;
+    if (d_ptr->adapter())
+        return d_ptr->adapter()->callObjectMethod("getName", "()Ljava/lang/String;").toString();
 
-        static jmethodID getNameID = env->GetMethodID(d_ptr->btAdapterClass, "getName", "()Ljava/lang/String;");
-        jstring peerName = (jstring) env->CallObjectMethod(d_ptr->btAdapterObject, getNameID);
-
-        jboolean isCopy;
-        const jchar* name = env->GetStringChars(peerName, &isCopy);
-        QString qtName = QString::fromUtf16(name, env->GetStringLength(peerName));
-        env->ReleaseStringChars(peerName, name);
-        return qtName;
-    } else {
-        return QString();
-    }
+    return QString();
 }
 
 QBluetoothAddress QBluetoothLocalDevice::address() const
 {
-    if (d_ptr->btAdapterObject != 0) {
-        JNIThreadHelper env;
+    QString result;
+    if (d_ptr->adapter())
+        result = d_ptr->adapter()->callObjectMethod("getAddress", "()Ljava/lang/String;").toString();
 
-        static jmethodID getAddressID = env->GetMethodID(d_ptr->btAdapterClass, "getAddress", "()Ljava/lang/String;");
-        jstring peerName = (jstring) env->CallObjectMethod(d_ptr->btAdapterObject, getAddressID);
-
-        jboolean isCopy;
-        const jchar* addressStr = env->GetStringChars(peerName, &isCopy);
-        QString strAddress = QString::fromUtf16(addressStr, env->GetStringLength(peerName));
-        QBluetoothAddress address(strAddress);
-        env->ReleaseStringChars(peerName, addressStr);
-        return address;
-    } else {
-        return QBluetoothAddress();
-    }
+    QBluetoothAddress address(result);
+    return address;
 }
 
 void QBluetoothLocalDevice::powerOn()
 {
-    JNIThreadHelper env;
+    if (hostMode() != HostPoweredOff)
+        return;
 
-    jmethodID enableID = env->GetMethodID(d_ptr->btAdapterClass, "enable", "()Z");
-    jboolean ret = env->CallBooleanMethod(d_ptr->btAdapterObject, enableID);
-    if (!ret)
-        emit error(QBluetoothLocalDevice::UnknownError);
+    if (d_ptr->adapter()) {
+        bool ret = (bool) d_ptr->adapter()->callMethod<jboolean>("enable", "()Z");
+        if (!ret)
+            emit error(QBluetoothLocalDevice::UnknownError);
+    }
 }
 
-void QBluetoothLocalDevice::setHostMode(QBluetoothLocalDevice::HostMode mode)
+void QBluetoothLocalDevice::setHostMode(QBluetoothLocalDevice::HostMode requestedMode)
 {
-    Q_UNUSED(mode);
-    // TODO: That must be implemented over Actions framework
+    QBluetoothLocalDevice::HostMode mode = requestedMode;
+    if (requestedMode == HostDiscoverableLimitedInquiry)
+        mode = HostDiscoverable;
+
+    if (mode == hostMode())
+        return;
+
+    if (mode == QBluetoothLocalDevice::HostPoweredOff) {
+        bool success = false;
+        if (d_ptr->adapter())
+            success = (bool) d_ptr->adapter()->callMethod<jboolean>("disable", "()Z");
+
+        if (!success)
+            emit error(QBluetoothLocalDevice::UnknownError);
+        return;
+    } else if (mode == QBluetoothLocalDevice::HostConnectable) {
+        QAndroidJniObject::callStaticMethod<void>("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver", "setConnectable");
+    } else if (mode == QBluetoothLocalDevice::HostDiscoverable ||
+               mode == QBluetoothLocalDevice::HostDiscoverableLimitedInquiry) {
+        QAndroidJniObject::callStaticMethod<void>("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver", "setDiscoverable");
+    }
 }
 
 QBluetoothLocalDevice::HostMode QBluetoothLocalDevice::hostMode() const
 {
-    JNIThreadHelper env;
+    if (d_ptr->adapter()) {
+        jint scanMode = d_ptr->adapter()->callMethod<jint>("getScanMode");
 
-    jmethodID getScanModeID = env->GetMethodID(d_ptr->btAdapterClass, "getScanMode", "()I");
-    jint scanMode = env->CallBooleanMethod(d_ptr->btAdapterObject, getScanModeID);
-    switch (scanMode) {
-        case 20:
-            return HostPoweredOff;
-        case 21:
-            return HostConnectable;
-        case 23:
-            return HostDiscoverable;
-        default: // HostDiscoverableLimitedInquiry is not supported
-            return HostPoweredOff;
+        switch (scanMode) {
+            case 20: //BluetoothAdapter.SCAN_MODE_NONE
+                return HostPoweredOff;
+            case 21: //BluetoothAdapter.SCAN_MODE_CONNECTABLE
+                return HostConnectable;
+            case 23: //BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE
+                return HostDiscoverable;
+            default:
+                break;
+        }
     }
+
+    return HostPoweredOff;
 }
 
 QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
 {
-    //TODO
+    //Android only supports max of one device (so far)
     QList<QBluetoothHostInfo> localDevices;
+
+    QAndroidJniEnvironment env;
+    jclass btAdapterClass = env->FindClass("android/bluetooth/BluetoothAdapter");
+    if (btAdapterClass == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"QtBluetooth", "Native registration unable to find class android/bluetooth/BluetoothAdapter");
+        return localDevices;
+    }
+
+    jmethodID getDefaultAdapterID = env->GetStaticMethodID(btAdapterClass, "getDefaultAdapter", "()Landroid/bluetooth/BluetoothAdapter;");
+    if (getDefaultAdapterID == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to get method ID: getDefaultAdapter of android/bluetooth/BluetoothAdapter");
+        env->DeleteLocalRef(btAdapterClass);
+        return localDevices;
+    }
+
+
+    jobject btAdapterObject = env->CallStaticObjectMethod(btAdapterClass, getDefaultAdapterID);
+    if (btAdapterObject == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Device does not support Bluetooth");
+        env->DeleteLocalRef(btAdapterClass);
+        return localDevices;
+    }
+
+    QAndroidJniObject o(btAdapterObject);
+    if (o.isValid()) {
+        QBluetoothHostInfo info;
+        info.setName(o.callObjectMethod("getName", "()Ljava/lang/String;").toString());
+        info.setAddress(QBluetoothAddress(o.callObjectMethod("getAddress", "()Ljava/lang/String;").toString()));
+        localDevices.append(info);
+    }
+
+    env->DeleteLocalRef(btAdapterObject);
+    env->DeleteLocalRef(btAdapterClass);
+
     return localDevices;
 }
 
 void QBluetoothLocalDevice::requestPairing(const QBluetoothAddress &address, Pairing pairing)
 {
-    // Not supported on Android. Android does it automatically while connecting.
+    //TODO
     emit error(PairingError);
 
     Q_UNUSED(address);
@@ -197,19 +299,40 @@ void QBluetoothLocalDevice::requestPairing(const QBluetoothAddress &address, Pai
 
 QBluetoothLocalDevice::Pairing QBluetoothLocalDevice::pairingStatus(const QBluetoothAddress &address) const
 {
-    Q_UNUSED(address);
+    if (address.isNull() || !d_ptr->adapter())
+        return Unpaired;
+
+    QAndroidJniObject inputString = QAndroidJniObject::fromString(address.toString());
+    QAndroidJniObject remoteDevice =
+            d_ptr->adapter()->callObjectMethod("getRemoteDevice",
+                                               "(Ljava/lang/String;)Landroid/bluetooth/BluetoothDevice;",
+                                               inputString.object<jstring>());
+    QAndroidJniEnvironment env;
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return Unpaired;
+    }
+
+    jint bondState = remoteDevice.callMethod<jint>("getBondState");
+    switch (bondState) {
+    case 12: //BluetoothDevice.BOND_BONDED
+        return Paired;
+    default:
+        break;
+    }
+
     return Unpaired;
 }
 
 void QBluetoothLocalDevice::pairingConfirmation(bool confirmation)
 {
+    //TODO
     Q_UNUSED(confirmation);
 }
 
-bool QBluetoothLocalDevicePrivate::isValid() const
+QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
 {
-    // TODO
-    return true;
+    return QList<QBluetoothAddress>();
 }
 
 QT_END_NAMESPACE

@@ -45,6 +45,7 @@
 #include "android/jnithreadhelper_p.h"
 #include <qpa/qplatformnativeinterface.h>
 #include <QtGui/QGuiApplication>
+#include <QAndroidJniEnvironment>
 
 QT_BEGIN_NAMESPACE
 
@@ -54,106 +55,80 @@ static JNINativeMethod methods[] = {
     {"jniOnReceive",    "(ILandroid/content/Context;Landroid/content/Intent;)V",                    (void *)&Java_eu_licentia_necessitas_industrius_QtBroadcastReceiver_jniOnReceive},
 };
 
-jobject AndroidBroadcastReceiver::jActivityObject = NULL;
-jclass AndroidBroadcastReceiver::jQtBroadcastReceiverClass = NULL;
-jclass AndroidBroadcastReceiver::jIntentFilterClass = NULL;
-
-void AndroidBroadcastReceiver::initialize(JNIThreadHelper& env, jclass /*appClass*/, jobject mainActivity)
+AndroidBroadcastReceiver::AndroidBroadcastReceiver(QObject* parent)
+    : QObject(parent), valid(false)
 {
-    jActivityObject = mainActivity;
-
-    jIntentFilterClass = env->FindClass("android/content/IntentFilter");
-
-    if (jIntentFilterClass == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt","Cannot find android.content.IntentFilter");
-    } else {
-        jIntentFilterClass = (jclass)env->NewGlobalRef(jIntentFilterClass);
+    //get QtActivity
+    QPlatformNativeInterface* nativeInterface = QGuiApplication::platformNativeInterface();
+    if (nativeInterface == NULL) {
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "QGuiApplication::platformNativeInterface(); returned NULL. Unable to initialize connectivity module.");
+        return;
     }
-    env->RegisterNatives(jQtBroadcastReceiverClass, methods, 1);
-}
 
-void AndroidBroadcastReceiver::loadJavaClass(JNIEnv *env)
-{
-    jQtBroadcastReceiverClass = env->FindClass("org/qtproject/qt5/android/QtBroadcastReceiver");
-    if (jQtBroadcastReceiverClass == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt","Cannot find org/qtproject/qt5/android/QtBroadcastReceiver");
-        env->ExceptionClear();
-    } else {
-        jQtBroadcastReceiverClass = (jclass)env->NewGlobalRef(jQtBroadcastReceiverClass);
+    void* pointer = QGuiApplication::platformNativeInterface()->nativeResourceForIntegration("QtActivity");
+    if (pointer == NULL) {
+        qDebug() << "nativeResourceForWidget(\"ApplicationContext\", 0)" << " - failed.";
+        __android_log_print(ANDROID_LOG_FATAL,"Qt", "nativeResourceForWidget(\"ApplicationContext\", 0) returned NULL\nProbably QtGui lib is too old.");
+        return;
     }
-}
 
-AndroidBroadcastReceiver::AndroidBroadcastReceiver(QObject* parent): QObject(parent)
-{
-    if (jQtBroadcastReceiverClass != NULL) {
-        JNIThreadHelper env;
+    jobject jActivityObject = reinterpret_cast<jobject>(pointer);
+    activityObject = QAndroidJniObject(jActivityObject);
 
-        if (jActivityObject==NULL) {
-            QPlatformNativeInterface* nativeInterface = QGuiApplication::platformNativeInterface();
-            if (nativeInterface == NULL) {
-                __android_log_print(ANDROID_LOG_FATAL,"Qt", "QGuiApplication::platformNativeInterface(); returned NULL. Unable to initialize connectivity module.");
-                goto error;
-            }
-            void* pointer = QGuiApplication::platformNativeInterface()->nativeResourceForIntegration("QtActivity");
-            if (pointer == NULL) {
-                qDebug() << "nativeResourceForWidget(\"ApplicationContext\", 0)" << " - failed.";
-                __android_log_print(ANDROID_LOG_FATAL,"Qt", "nativeResourceForWidget(\"ApplicationContext\", 0) returned NULL\nProbably QtGui lib is too old.");
-                goto error;
-            } else {
-                jActivityObject = reinterpret_cast<jobject>(pointer);
-                //Lauri - questionalbe if this is already a global ref
-                jActivityObject = (jclass)env->NewGlobalRef(jActivityObject);
+    broadcastReceiverObject = QAndroidJniObject("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver");
+    if (!broadcastReceiverObject.isValid())
+        return;
+    broadcastReceiverObject.setField<jint>("qtObject", reinterpret_cast<int>(this));
 
-                initialize(env, JNIThreadHelper::appContextClass(), jActivityObject);
-            }
-        }
-
-        jmethodID jQtBroadcastReceiverConstructorID = env->GetMethodID(jQtBroadcastReceiverClass, "<init>", "()V"); // no parameters
-        jQtBroadcastReceiverObject = env->NewObject(jQtBroadcastReceiverClass, jQtBroadcastReceiverConstructorID);
-        jQtBroadcastReceiverObject = env->NewGlobalRef(jQtBroadcastReceiverObject);
-
-        jfieldID jQtObjectFieldID = env->GetFieldID(jQtBroadcastReceiverClass, "qtObject", "I");
-        env->SetIntField(jQtBroadcastReceiverObject, jQtObjectFieldID, reinterpret_cast<int>(this));
-
-        jmethodID intentFilterConstructorID = env->GetMethodID(jIntentFilterClass, "<init>", "()V"); // no parameters
-        jIntentFilterObject = env->NewObject(jIntentFilterClass, intentFilterConstructorID);
-        jIntentFilterObject = env->NewGlobalRef(jIntentFilterObject);
+    QAndroidJniEnvironment env;
+    jclass objectClass = env->GetObjectClass(broadcastReceiverObject.object<jobject>());
+    jint res = env->RegisterNatives(objectClass, methods, 1);
+    if ( res<0 ) {
+        qWarning() << "Cannot register BroadcastReceiver::jniOnReceive";
+        return;
     }
-    error:;
+
+    intentFilterObject = QAndroidJniObject("android/content/IntentFilter");
+    if (!intentFilterObject.isValid())
+        return;
+
+    valid = true;
 }
 
 AndroidBroadcastReceiver::~AndroidBroadcastReceiver()
 {
     unregisterReceiver();
+}
 
-    JNIThreadHelper env;
-    env->DeleteGlobalRef(jQtBroadcastReceiverObject);
-    env->DeleteGlobalRef(jIntentFilterObject);
+bool AndroidBroadcastReceiver::isValid() const
+{
+    return valid;
 }
 
 void AndroidBroadcastReceiver::unregisterReceiver()
 {
-    if (jActivityObject==NULL) return;
+    if (!valid)
+        return;
 
-    JNIThreadHelper env;
-    jclass jContextClass = env->FindClass("android/app/Application");
-    jmethodID unregisterReceiverMethodID = env->GetMethodID(jContextClass, "unregisterReceiver", "(Landroid/content/BroadcastReceiver;)V");
-    env->CallObjectMethod(jActivityObject, unregisterReceiverMethodID, jQtBroadcastReceiverObject);
+    activityObject.callObjectMethod(
+                "unregisterReceiver",
+                "(Landroid/content/BroadcastReceiver;)V",
+                broadcastReceiverObject.object<jobject>());
 }
 
 void AndroidBroadcastReceiver::addAction(const QString &action)
 {
-    if (jActivityObject==NULL) return;
+    if (!valid)
+        return;
 
-    JNIThreadHelper env;
-    static jmethodID jAddActionID = env->GetMethodID(jIntentFilterClass, "addAction", "(Ljava/lang/String;)V");
-    jstring filterStringUTF = env->NewStringUTF(action.toUtf8()); // Lauri - toAscii replaces by utf8
-    env->CallVoidMethod(jIntentFilterObject, jAddActionID, filterStringUTF);
-    env->DeleteLocalRef(filterStringUTF);
+    QAndroidJniObject actionString = QAndroidJniObject::fromString(action);
+    intentFilterObject.callMethod<void>("addAction", "(Ljava/lang/String;)V", actionString.object<jstring>());
 
-    jclass jContextClass = env->FindClass("android/app/Application");
-    jmethodID registerReceiverMethodID = env->GetMethodID(jContextClass, "registerReceiver", "(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;");
-    env->CallObjectMethod(jActivityObject, registerReceiverMethodID, jQtBroadcastReceiverObject, jIntentFilterObject);
+    activityObject.callObjectMethod(
+                "registerReceiver",
+                "(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;",
+                broadcastReceiverObject.object<jobject>(),
+                intentFilterObject.object<jobject>());
 }
 
 QT_END_NAMESPACE
@@ -170,5 +145,3 @@ JNIEXPORT void JNICALL Java_eu_licentia_necessitas_industrius_QtBroadcastReceive
 }
 
 #endif
-
-//#include "moc_androidbroadcastreceiver.cpp"

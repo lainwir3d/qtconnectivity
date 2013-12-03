@@ -67,6 +67,8 @@ QT_END_NAMESPACE
 #endif
 #ifdef QT_ANDROID_BLUETOOTH
 #include <jni.h>
+#include <QtAndroidExtras/QAndroidJniEnvironment>
+#include <QtAndroidExtras/QAndroidJniObject>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -74,15 +76,25 @@ QT_BEGIN_NAMESPACE
 class QBluetoothAddress;
 
 #ifdef QT_ANDROID_BLUETOOTH
-class QBluetoothLocalDevicePrivate{
+class LocalDeviceBroadcastReceiver;
+class QBluetoothLocalDevicePrivate {
 public:
-    static jclass btAdapterClass;
-    static jobject btAdapterObject;
-    static void initialize(JNIEnv *env);
+    QBluetoothLocalDevicePrivate(
+            QBluetoothLocalDevice *q,
+            const QBluetoothAddress &address = QBluetoothAddress());
+    ~QBluetoothLocalDevicePrivate();
+
+    QAndroidJniObject *adapter();
+    void initialize(const QBluetoothAddress& address);
     static bool startDiscovery();
     static bool cancelDiscovery();
     static bool isDiscovering();
     bool isValid() const;
+public:
+    QBluetoothLocalDevice *q_ptr;
+    QAndroidJniObject *obj;
+    LocalDeviceBroadcastReceiver *receiver;
+
 };
 
 #elif defined(QT_BLUEZ_BLUETOOTH)

@@ -93,12 +93,13 @@ QT_BEGIN_NAMESPACE
     if they have previously been paired with it or otherwise know its address. This powers up the
     device if it was powered off.
     \value HostDiscoverable     Remote Bluetooth devices can discover the presence of the local
-    Bluetooth device. The device will also be connectable, and powered on.
+    Bluetooth device. The device will also be connectable, and powered on. On Android, this mode can only be active
+    for a maximum of 5 minutes.
     \value HostDiscoverableLimitedInquiry Remote Bluetooth devices can discover the presence of the local
      Bluetooth device when performing a limited inquiry. This should be used for locating services that are
      only made discoverable for a limited period of time. This can speed up discovery between gaming devices,
      as service discovery can be skipped on devices not in LimitedInquiry mode. In this mode, the device will
-     be connectable and powered on, if required.
+     be connectable and powered on, if required. This mode is is not supported on Android.
 
 */
 

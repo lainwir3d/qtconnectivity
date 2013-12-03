@@ -100,13 +100,28 @@ config_bluez:qtHaveModule(dbus) {
     QT += gui-private
     QT += androidextras
 
+    ANDROID_PERMISSIONS = \
+        android.permission.BLUETOOTH \
+        android.permission.BLUETOOTH_ADMIN
+    ANDROID_BUNDLED_JAR_DEPENDENCIES = \
+        jar/QtAndroidBluetooth-bundled.jar:org.qtproject.qt5.android.bluetooth.QtBluetoothBroadcastReceiver
+    ANDROID_JAR_DEPENDENCIES = \
+        jar/QtAndroidBluetooth.jar:org.qtproject.qt5.android.bluetooth.QtBluetoothBroadcastReceiver
+
     SOURCES += \
-        qbluetoothdevicediscoveryagent_android.cpp \
+        qbluetoothdevicediscoveryagent_p.cpp \
         qbluetoothlocaldevice_android.cpp \
         qbluetoothserviceinfo_p.cpp \
         qbluetoothservicediscoveryagent_p.cpp \
-        qbluetoothsocket_android.cpp \
+        qbluetoothsocket_p.cpp \
         qbluetoothserver_p.cpp
+#    SOURCES += \
+#        qbluetoothdevicediscoveryagent_android.cpp \
+#        qbluetoothlocaldevice_android.cpp \
+#        qbluetoothserviceinfo_p.cpp \
+#        qbluetoothservicediscoveryagent_p.cpp \
+#        qbluetoothsocket_android.cpp \
+#        qbluetoothserver_p.cpp
 
 } else {
     message("Unsupported bluetooth platform, will not build a working QBluetooth library")

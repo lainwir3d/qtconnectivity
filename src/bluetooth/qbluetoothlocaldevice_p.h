@@ -77,7 +77,9 @@ class QBluetoothAddress;
 
 #ifdef QT_ANDROID_BLUETOOTH
 class LocalDeviceBroadcastReceiver;
-class QBluetoothLocalDevicePrivate {
+class QBluetoothLocalDevicePrivate : public QObject
+{
+    Q_OBJECT
 public:
     QBluetoothLocalDevicePrivate(
             QBluetoothLocalDevice *q,
@@ -90,11 +92,16 @@ public:
     static bool cancelDiscovery();
     static bool isDiscovering();
     bool isValid() const;
-public:
+
+private slots:
+    void processHostModeChange(QBluetoothLocalDevice::HostMode newMode);
+
+private:
     QBluetoothLocalDevice *q_ptr;
     QAndroidJniObject *obj;
+public:
     LocalDeviceBroadcastReceiver *receiver;
-
+    bool inTransition;
 };
 
 #elif defined(QT_BLUEZ_BLUETOOTH)

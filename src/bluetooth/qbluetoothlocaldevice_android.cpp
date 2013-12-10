@@ -53,13 +53,13 @@ QT_BEGIN_NAMESPACE
 
 QBluetoothLocalDevicePrivate::QBluetoothLocalDevicePrivate(
         QBluetoothLocalDevice *q, const QBluetoothAddress &address)
-    : q_ptr(q), obj(0)
+    : q_ptr(q), obj(0), inTransition(false)
 {
     initialize(address);
 
     receiver = new LocalDeviceBroadcastReceiver(q_ptr);
     QObject::connect(receiver, SIGNAL(hostModeStateChanged(QBluetoothLocalDevice::HostMode)),
-                     q, SIGNAL(hostModeStateChanged(QBluetoothLocalDevice::HostMode)));
+                     this, SLOT(processHostModeChange(QBluetoothLocalDevice::HostMode)));
 }
 
 
@@ -156,9 +156,25 @@ bool QBluetoothLocalDevicePrivate::isDiscovering()
 
 bool QBluetoothLocalDevicePrivate::isValid() const
 {
-   return obj ? true : false;
+    return obj ? true : false;
 }
 
+void QBluetoothLocalDevicePrivate::processHostModeChange(QBluetoothLocalDevice::HostMode newMode)
+{
+    if (!inTransition) {
+        //if not in transition -> pass data on
+        emit q_ptr->hostModeStateChanged(newMode);
+        return;
+    }
+
+    if (isValid() && newMode == QBluetoothLocalDevice::HostPoweredOff) {
+        bool success = (bool) obj->callMethod<jboolean>("enable", "()Z");
+        if (!success)
+            emit q_ptr->error(QBluetoothLocalDevice::UnknownError);
+    }
+
+    inTransition = false;
+}
 
 QBluetoothLocalDevice::QBluetoothLocalDevice(QObject *parent)
 :   QObject(parent),
@@ -218,9 +234,16 @@ void QBluetoothLocalDevice::setHostMode(QBluetoothLocalDevice::HostMode requeste
 
         if (!success)
             emit error(QBluetoothLocalDevice::UnknownError);
-        return;
     } else if (mode == QBluetoothLocalDevice::HostConnectable) {
-        QAndroidJniObject::callStaticMethod<void>("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver", "setConnectable");
+        if (hostMode() == QBluetoothLocalDevice::HostDiscoverable) {
+            //cannot directly go from Discoverable to Connectable
+            //we need to go to disabled mode and enable once disabling came through
+
+            setHostMode(QBluetoothLocalDevice::HostPoweredOff);
+            d_ptr->inTransition = true;
+        } else {
+            QAndroidJniObject::callStaticMethod<void>("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver", "setConnectable");
+        }
     } else if (mode == QBluetoothLocalDevice::HostDiscoverable ||
                mode == QBluetoothLocalDevice::HostDiscoverableLimitedInquiry) {
         QAndroidJniObject::callStaticMethod<void>("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver", "setDiscoverable");

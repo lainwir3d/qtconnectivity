@@ -41,8 +41,8 @@
 ****************************************************************************/
 
 #include "android/devicediscoverybroadcastreceiver_p.h"
-#include "qbluetoothdeviceinfo.h"
-#include "qbluetoothaddress.h"
+#include <QtBluetooth/QBluetoothAddress>
+#include <QtBluetooth/QBluetoothDeviceInfo>
 
 QT_BEGIN_NAMESPACE
 

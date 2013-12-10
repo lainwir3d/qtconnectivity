@@ -44,7 +44,7 @@
 #define DEVICEDISCOVERYBROADCASTRECEIVER_H
 
 #include "android/androidbroadcastreceiver_p.h"
-#include "qbluetoothdevicediscoveryagent.h"
+#include <QtBluetooth/QBluetoothDeviceDiscoveryAgent>
 
 QT_BEGIN_NAMESPACE
 

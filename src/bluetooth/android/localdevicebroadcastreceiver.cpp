@@ -39,6 +39,8 @@
 **
 ****************************************************************************/
 
+#include <QtCore/QDebug>
+
 #include "localdevicebroadcastreceiver_p.h"
 
 QT_BEGIN_NAMESPACE

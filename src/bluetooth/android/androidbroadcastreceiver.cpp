@@ -42,10 +42,10 @@
 
 #include <android/log.h>
 #include "android/androidbroadcastreceiver_p.h"
-#include "android/jnithreadhelper_p.h"
 #include <qpa/qplatformnativeinterface.h>
+#include <QtCore/QDebug>
 #include <QtGui/QGuiApplication>
-#include <QAndroidJniEnvironment>
+#include <QtAndroidExtras/QAndroidJniEnvironment>
 
 QT_BEGIN_NAMESPACE
 
@@ -67,8 +67,7 @@ AndroidBroadcastReceiver::AndroidBroadcastReceiver(QObject* parent)
 
     void* pointer = QGuiApplication::platformNativeInterface()->nativeResourceForIntegration("QtActivity");
     if (pointer == NULL) {
-        qDebug() << "nativeResourceForWidget(\"ApplicationContext\", 0)" << " - failed.";
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "nativeResourceForWidget(\"ApplicationContext\", 0) returned NULL\nProbably QtGui lib is too old.");
+        qWarning() << "nativeResourceForWidget(\"ApplicationContext\", 0)" << " - failed.";
         return;
     }
 
@@ -83,7 +82,7 @@ AndroidBroadcastReceiver::AndroidBroadcastReceiver(QObject* parent)
     QAndroidJniEnvironment env;
     jclass objectClass = env->GetObjectClass(broadcastReceiverObject.object<jobject>());
     jint res = env->RegisterNatives(objectClass, methods, 1);
-    if ( res<0 ) {
+    if (res < 0) {
         qWarning() << "Cannot register BroadcastReceiver::jniOnReceive";
         return;
     }

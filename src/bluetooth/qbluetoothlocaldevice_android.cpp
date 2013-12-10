@@ -40,14 +40,14 @@
 **
 ****************************************************************************/
 
-#include "qbluetoothlocaldevice.h"
-#include "qbluetoothaddress.h"
-#include "qbluetoothlocaldevice_p.h"
-#include "android/jnithreadhelper_p.h"
-#include "android/localdevicebroadcastreceiver_p.h"
 #include <android/log.h>
-#include <QAndroidJniObject>
-#include <QAndroidJniEnvironment>
+#include <QtAndroidExtras/QAndroidJniEnvironment>
+#include <QtAndroidExtras/QAndroidJniObject>
+#include <QtBluetooth/QBluetoothLocalDevice>
+#include <QtBluetooth/QBluetoothAddress>
+
+#include "qbluetoothlocaldevice_p.h"
+#include "android/localdevicebroadcastreceiver_p.h"
 
 QT_BEGIN_NAMESPACE
 

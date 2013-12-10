@@ -43,10 +43,9 @@
 #ifndef JNIBROADCASTRECEIVER_H
 #define JNIBROADCASTRECEIVER_H
 #include <jni.h>
-#include <QtCore>
+#include <QtCore/QObject>
 #include <android/log.h>
-#include "android/jnithreadhelper_p.h"
-#include <QAndroidJniObject>
+#include <QtAndroidExtras/QAndroidJniObject>
 
 /* Header for class eu_licentia_necessitas_industrius_QtBroadcastReceiver */
 #ifdef __cplusplus

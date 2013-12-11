@@ -1,6 +1,5 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Lauri Laanmets (Proekspert AS) <lauri.laanmets@eesti.ee>
 ** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
@@ -40,35 +39,14 @@
 **
 ****************************************************************************/
 
-#include <jni.h>
-#include <android/log.h>
-#include <QtBluetooth/qbluetoothglobal.h>
-#include <QtAndroidExtras/QAndroidJniEnvironment>
-#include <QtAndroidExtras/QAndroidJniObject>
-
-#include "android/jni_android_p.h"
-
-Q_BLUETOOTH_EXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* /*reserved*/)
-{
-    Q_UNUSED(vm)
-
-    void *venv = 0;
-    if (vm->GetEnv(&venv, JNI_VERSION_1_4) != JNI_OK)
-    {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt","GetEnv failed");
-        return -1;
-    }
-
-    __android_log_print(ANDROID_LOG_INFO, "QtBluetooth", "Bluetooth start");
-
-    return JNI_VERSION_1_4;
-}
+#ifndef JNI_ANDROID_H
+#define JNI_ANDROID_H
 
 namespace QtAndroid
 {
 
-    int androidApiLevel()
-    {
-        return QAndroidJniObject::getStaticField<jint>("android/os/Build$VERSION", "SDK_INT");
-    }
+    int androidApiLevel();
 }
+
+
+#endif // JNI_ANDROID_H

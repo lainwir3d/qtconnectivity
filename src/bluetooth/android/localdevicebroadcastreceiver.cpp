@@ -91,6 +91,42 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
                     break;
             }
         }
+    } else if (action == QStringLiteral("android.bluetooth.device.action.BOND_STATE_CHANGED")) {
+        //get BluetoothDevice
+        QAndroidJniObject keyExtra = QAndroidJniObject::fromString(
+                            QStringLiteral("android.bluetooth.device.extra.DEVICE"));
+        QAndroidJniObject bluetoothDevice =
+                intentObject.callObjectMethod("getParcelableExtra",
+                                              "(Ljava/lang/String;)Landroid/os/Parcelable;",
+                                              keyExtra.object<jstring>());
+
+        //get new bond state
+        keyExtra = QAndroidJniObject::fromString(
+                            QStringLiteral("android.bluetooth.device.extra.BOND_STATE"));
+        QAndroidJniObject extrasBundle =
+                intentObject.callObjectMethod("getExtras","()Landroid/os/Bundle;");
+        int bondState = extrasBundle.callMethod<jint>("getInt",
+                                                      "(Ljava/lang/String;)I",
+                                                      keyExtra.object<jstring>());
+
+        QBluetoothAddress address(bluetoothDevice.callObjectMethod<jstring>("getAddress").toString());
+        if (address.isNull())
+                return;
+
+        switch (bondState) {
+        case 10: //BluetoothDevice.BOND_NONE
+            emit pairingStateChanged(address, QBluetoothLocalDevice::Unpaired);
+            break;
+        case 11: //BluetoothDevice.BOND_BONDING
+            //we ignore this as Qt doesn't have equivalent API.
+            break;
+        case 12: //BluetoothDevice.BOND_BONDED
+            emit pairingStateChanged(address, QBluetoothLocalDevice::Paired);
+            break;
+        default:
+            qWarning() << "Unknown BOND_STATE_CHANGED value:" << bondState;
+            break;
+        }
     }
 }
 

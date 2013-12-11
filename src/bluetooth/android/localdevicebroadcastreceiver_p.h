@@ -40,7 +40,8 @@
 ****************************************************************************/
 
 #include "android/androidbroadcastreceiver_p.h"
-#include <QBluetoothLocalDevice>
+#include <QtBluetooth/QBluetoothAddress>
+#include <QtBluetooth/QBluetoothLocalDevice>
 
 #ifndef LOCALDEVICEBROADCASTRECEIVER_H
 #define LOCALDEVICEBROADCASTRECEIVER_H
@@ -57,6 +58,7 @@ public:
 
 signals:
     void hostModeStateChanged(QBluetoothLocalDevice::HostMode state);
+    void pairingStateChanged(const QBluetoothAddress &address, QBluetoothLocalDevice::Pairing pairing);
 private:
     int previousScanMode;
 };

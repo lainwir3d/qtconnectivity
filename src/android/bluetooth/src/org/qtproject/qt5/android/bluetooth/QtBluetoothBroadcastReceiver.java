@@ -49,6 +49,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import java.lang.reflect.Method;
 
 public class QtBluetoothBroadcastReceiver extends BroadcastReceiver
 {
@@ -119,6 +120,26 @@ public class QtBluetoothBroadcastReceiver extends BroadcastReceiver
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+    static public boolean setPairingMode(String address, boolean isPairing)
+    {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        try {
+            BluetoothDevice device = adapter.getRemoteDevice(address);
+            String methodName = "createBond";
+            if (!isPairing)
+                methodName = "removeBond";
+
+            Method m = device.getClass()
+                    .getMethod(methodName, (Class[]) null);
+            m.invoke(device, (Object[]) null);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return false;
+        }
+
+        return true;
     }
 
 }

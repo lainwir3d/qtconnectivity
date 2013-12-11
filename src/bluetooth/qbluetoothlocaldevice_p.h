@@ -69,6 +69,7 @@ QT_END_NAMESPACE
 #include <jni.h>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
 #include <QtAndroidExtras/QAndroidJniObject>
+#include <QtCore/QPair>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -92,16 +93,20 @@ public:
     static bool cancelDiscovery();
     static bool isDiscovering();
     bool isValid() const;
+    int pendingPairing(const QBluetoothAddress &address);
 
 private slots:
     void processHostModeChange(QBluetoothLocalDevice::HostMode newMode);
+    void processPairingStateChanged(const QBluetoothAddress &address,
+                             QBluetoothLocalDevice::Pairing pairing);
 
 private:
     QBluetoothLocalDevice *q_ptr;
     QAndroidJniObject *obj;
 public:
     LocalDeviceBroadcastReceiver *receiver;
-    bool inTransition;
+    bool inHostModeTransition;
+    QList<QPair<QBluetoothAddress, bool> > pendingPairings;
 };
 
 #elif defined(QT_BLUEZ_BLUETOOTH)

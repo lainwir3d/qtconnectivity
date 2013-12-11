@@ -48,18 +48,23 @@
 
 #include "qbluetoothlocaldevice_p.h"
 #include "android/localdevicebroadcastreceiver_p.h"
+#include "android/jni_android_p.h"
+
+#include <QDebug>
 
 QT_BEGIN_NAMESPACE
 
 QBluetoothLocalDevicePrivate::QBluetoothLocalDevicePrivate(
         QBluetoothLocalDevice *q, const QBluetoothAddress &address)
-    : q_ptr(q), obj(0), inTransition(false)
+    : q_ptr(q), obj(0), inHostModeTransition(false)
 {
     initialize(address);
 
     receiver = new LocalDeviceBroadcastReceiver(q_ptr);
     QObject::connect(receiver, SIGNAL(hostModeStateChanged(QBluetoothLocalDevice::HostMode)),
                      this, SLOT(processHostModeChange(QBluetoothLocalDevice::HostMode)));
+    QObject::connect(receiver, SIGNAL(pairingStateChanged(QBluetoothAddress,QBluetoothLocalDevice::Pairing)),
+                     this, SLOT(processPairingStateChanged(QBluetoothAddress,QBluetoothLocalDevice::Pairing)));
 }
 
 
@@ -159,9 +164,10 @@ bool QBluetoothLocalDevicePrivate::isValid() const
     return obj ? true : false;
 }
 
+
 void QBluetoothLocalDevicePrivate::processHostModeChange(QBluetoothLocalDevice::HostMode newMode)
 {
-    if (!inTransition) {
+    if (!inHostModeTransition) {
         //if not in transition -> pass data on
         emit q_ptr->hostModeStateChanged(newMode);
         return;
@@ -173,7 +179,40 @@ void QBluetoothLocalDevicePrivate::processHostModeChange(QBluetoothLocalDevice::
             emit q_ptr->error(QBluetoothLocalDevice::UnknownError);
     }
 
-    inTransition = false;
+    inHostModeTransition = false;
+}
+
+// Return -1 if address is not part of a pending pairing request
+// Otherwise it returns the index of address in pendingPairings
+int QBluetoothLocalDevicePrivate::pendingPairing(const QBluetoothAddress &address)
+{
+    for (int i = 0; i < pendingPairings.count(); i++) {
+        if (pendingPairings.at(i).first == address)
+            return i;
+    }
+
+    return -1;
+}
+
+
+void QBluetoothLocalDevicePrivate::processPairingStateChanged(
+        const QBluetoothAddress &address, QBluetoothLocalDevice::Pairing pairing)
+{
+    int index = pendingPairing(address);
+
+    if (index < 0)
+        return; //ignore unrelated pairing signals
+
+    qDebug() << address.toString() << pairing;
+
+    QPair<QBluetoothAddress, bool> entry = pendingPairings.takeAt(index);
+    if ((entry.second && pairing == QBluetoothLocalDevice::Paired) ||
+        (!entry.second && pairing == QBluetoothLocalDevice::Unpaired)) {
+        emit q_ptr->pairingFinished(address, pairing);
+    } else {
+        emit q_ptr->error(QBluetoothLocalDevice::PairingError);
+    }
+
 }
 
 QBluetoothLocalDevice::QBluetoothLocalDevice(QObject *parent)
@@ -240,7 +279,7 @@ void QBluetoothLocalDevice::setHostMode(QBluetoothLocalDevice::HostMode requeste
             //we need to go to disabled mode and enable once disabling came through
 
             setHostMode(QBluetoothLocalDevice::HostPoweredOff);
-            d_ptr->inTransition = true;
+            d_ptr->inHostModeTransition = true;
         } else {
             QAndroidJniObject::callStaticMethod<void>("org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver", "setConnectable");
         }
@@ -313,11 +352,51 @@ QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
 
 void QBluetoothLocalDevice::requestPairing(const QBluetoothAddress &address, Pairing pairing)
 {
-    //TODO
-    emit error(PairingError);
+    if (address.isNull()) {
+        QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection,
+                                    Q_ARG(QBluetoothLocalDevice::Error,
+                                    QBluetoothLocalDevice::PairingError));
+        return;
+    }
 
-    Q_UNUSED(address);
-    Q_UNUSED(pairing);
+    const Pairing previousPairing = pairingStatus(address);
+    Pairing newPairing = pairing;
+    if (pairing == AuthorizedPaired) //AuthorizedPaired same as Paired on Android
+        newPairing = Paired;
+
+    if (previousPairing == newPairing) {
+        QMetaObject::invokeMethod(this, "pairingFinished", Qt::QueuedConnection,
+                                    Q_ARG(QBluetoothAddress, address),
+                                    Q_ARG(QBluetoothLocalDevice::Pairing, pairing));
+        return;
+    }
+
+    //BluetoothDevice::createBond() requires Android API 19
+    if (QtAndroid::androidApiLevel() < 19 || !d_ptr->adapter()) {
+        qWarning() << "Unable to pair: requires Android API 19+";
+        QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection,
+                                    Q_ARG(QBluetoothLocalDevice::Error,
+                                    QBluetoothLocalDevice::PairingError));
+        return;
+    }
+
+    QAndroidJniObject inputString = QAndroidJniObject::fromString(address.toString());
+    jboolean success = QAndroidJniObject::callStaticMethod<jboolean>(
+                                    "org/qtproject/qt5/android/bluetooth/QtBluetoothBroadcastReceiver",
+                                    "setPairingMode",
+                                    "(Ljava/lang/String;Z)Z",
+                                    inputString.object<jstring>(),
+                                    newPairing == Paired ?  JNI_TRUE : JNI_FALSE);
+
+    if (!success) {
+        QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection,
+                                    Q_ARG(QBluetoothLocalDevice::Error,
+                                    QBluetoothLocalDevice::PairingError));
+    } else {
+        d_ptr->pendingPairings.append(qMakePair(address,
+                                                newPairing == Paired ? true : false));
+    }
+
 }
 
 QBluetoothLocalDevice::Pairing QBluetoothLocalDevice::pairingStatus(const QBluetoothAddress &address) const

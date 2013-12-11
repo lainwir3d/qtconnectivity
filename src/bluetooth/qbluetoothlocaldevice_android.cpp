@@ -65,6 +65,8 @@ QBluetoothLocalDevicePrivate::QBluetoothLocalDevicePrivate(
                      this, SLOT(processHostModeChange(QBluetoothLocalDevice::HostMode)));
     QObject::connect(receiver, SIGNAL(pairingStateChanged(QBluetoothAddress,QBluetoothLocalDevice::Pairing)),
                      this, SLOT(processPairingStateChanged(QBluetoothAddress,QBluetoothLocalDevice::Pairing)));
+    QObject::connect(receiver, SIGNAL(connectDeviceChanges(QBluetoothAddress,bool)),
+                     this, SLOT(processConnectDeviceChanges(QBluetoothAddress,bool)));
 }
 
 
@@ -213,6 +215,27 @@ void QBluetoothLocalDevicePrivate::processPairingStateChanged(
         emit q_ptr->error(QBluetoothLocalDevice::PairingError);
     }
 
+}
+
+void QBluetoothLocalDevicePrivate::processConnectDeviceChanges(const QBluetoothAddress& address, bool isConnectEvent)
+{
+    int index = -1;
+    for (int i = 0; i < connectedDevices.count(); i++) {
+        if (connectedDevices.at(i) == address) {
+            index = i;
+            break;
+        }
+    }
+
+    if (isConnectEvent) { //connect event
+        if (index >= 0)
+            return;
+        connectedDevices.append(address);
+        emit q_ptr->deviceConnected(address);
+    } else { //disconnect event
+        connectedDevices.removeAll(address);
+        emit q_ptr->deviceDisconnected(address);
+    }
 }
 
 QBluetoothLocalDevice::QBluetoothLocalDevice(QObject *parent)
@@ -434,7 +457,7 @@ void QBluetoothLocalDevice::pairingConfirmation(bool confirmation)
 
 QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
 {
-    return QList<QBluetoothAddress>();
+    return d_ptr->connectedDevices;
 }
 
 QT_END_NAMESPACE

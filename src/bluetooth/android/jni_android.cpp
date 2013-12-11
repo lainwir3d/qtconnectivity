@@ -43,7 +43,6 @@
 #include <jni.h>
 #include <android/log.h>
 #include <QtBluetooth/qbluetoothglobal.h>
-#include <QtAndroidExtras/QAndroidJniEnvironment>
 #include <QtAndroidExtras/QAndroidJniObject>
 
 #include "android/jni_android_p.h"

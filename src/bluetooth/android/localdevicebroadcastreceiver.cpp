@@ -50,6 +50,9 @@ LocalDeviceBroadcastReceiver::LocalDeviceBroadcastReceiver(QObject *parent) :
 {
     addAction(QStringLiteral("android.bluetooth.device.action.BOND_STATE_CHANGED"));
     addAction(QStringLiteral("android.bluetooth.adapter.action.SCAN_MODE_CHANGED"));
+    addAction(QStringLiteral("android.bluetooth.device.action.ACL_CONNECTED"));
+    addAction(QStringLiteral("android.bluetooth.device.action.ACL_DISCONNECTED"));
+
 }
 
 void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobject intent)
@@ -127,6 +130,25 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
             qWarning() << "Unknown BOND_STATE_CHANGED value:" << bondState;
             break;
         }
+    } else if (action == QStringLiteral("android.bluetooth.device.action.ACL_DISCONNECTED") ||
+               action == QStringLiteral("android.bluetooth.device.action.ACL_CONNECTED")) {
+
+        const bool isConnectEvent =
+                action == QStringLiteral("android.bluetooth.device.action.ACL_CONNECTED") ? true : false;
+
+        //get BluetoothDevice
+        QAndroidJniObject keyExtra = QAndroidJniObject::fromString(
+                            QStringLiteral("android.bluetooth.device.extra.DEVICE"));
+        QAndroidJniObject bluetoothDevice =
+                intentObject.callObjectMethod("getParcelableExtra",
+                                              "(Ljava/lang/String;)Landroid/os/Parcelable;",
+                                              keyExtra.object<jstring>());
+
+        QBluetoothAddress address(bluetoothDevice.callObjectMethod<jstring>("getAddress").toString());
+        if (address.isNull())
+            return;
+
+        emit connectDeviceChanges(address, isConnectEvent);
     }
 }
 

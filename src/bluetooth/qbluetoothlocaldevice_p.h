@@ -98,7 +98,8 @@ public:
 private slots:
     void processHostModeChange(QBluetoothLocalDevice::HostMode newMode);
     void processPairingStateChanged(const QBluetoothAddress &address,
-                             QBluetoothLocalDevice::Pairing pairing);
+                            QBluetoothLocalDevice::Pairing pairing);
+    void processConnectDeviceChanges(const QBluetoothAddress& address, bool isConnectEvent);
 
 private:
     QBluetoothLocalDevice *q_ptr;
@@ -107,6 +108,7 @@ public:
     LocalDeviceBroadcastReceiver *receiver;
     bool inHostModeTransition;
     QList<QPair<QBluetoothAddress, bool> > pendingPairings;
+    QList<QBluetoothAddress> connectedDevices;
 };
 
 #elif defined(QT_BLUEZ_BLUETOOTH)

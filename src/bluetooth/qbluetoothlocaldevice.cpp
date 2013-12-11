@@ -189,24 +189,39 @@ bool QBluetoothLocalDevice::isValid() const
 */
 
 /*!
-  \fn void QBluetoothLocalDevice::deviceConnected(const QBluetoothAddress &address)
+  \fn QBluetoothLocalDevice::deviceConnected(const QBluetoothAddress &address)
   \since 5.3
 
-  A device with \a address is connected with this device.
+  This signal is emitted when the local device establishes a connection to a remote device
+  with \a address.
+
+  \sa deviceDisconnected(), connectedDevices()
 */
 
 /*!
-  \fn void QBluetoothLocalDevice::deviceDisconnected(const QBluetoothAddress &address)
+  \fn QBluetoothLocalDevice::deviceDisconnected(const QBluetoothAddress &address)
   \since 5.3
 
-  A device with \a address is disconnected from this device.
+  This signal is emitted when the local device disconnects from a remote Bluetooth device
+  with \a address.
+
+  \sa deviceConnected(), connectedDevices()
 */
 
 /*!
-  \fn QList<QBluetoothAddress> connectedDevices() const
+  \fn QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
   \since 5.3
 
-  Returns the list of connected devices.
+  Returns the list of connected devices. This list is different from the list of currently
+  paired devices.
+
+  On Android it is not possible to retrieve a list of connected devices. It is only possible to
+  listen to (dis)connect changes. For convenience, this class monitors all connect
+  and disconnect events since its instanciation and returns the current list when calling this function.
+  Therefore it is possible that this function returns an empty list shortly after creating an
+  instance.
+
+  \sa deviceConnected(), deviceDisconnected()
 */
 
 /*!

@@ -59,6 +59,7 @@ public:
 signals:
     void hostModeStateChanged(QBluetoothLocalDevice::HostMode state);
     void pairingStateChanged(const QBluetoothAddress &address, QBluetoothLocalDevice::Pairing pairing);
+    void connectDeviceChanges(const QBluetoothAddress &address, bool isConnectEvent);
 private:
     int previousScanMode;
 };

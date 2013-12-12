@@ -93,21 +93,26 @@ public:
     static bool cancelDiscovery();
     static bool isDiscovering();
     bool isValid() const;
-    int pendingPairing(const QBluetoothAddress &address);
+
 
 private slots:
     void processHostModeChange(QBluetoothLocalDevice::HostMode newMode);
     void processPairingStateChanged(const QBluetoothAddress &address,
                             QBluetoothLocalDevice::Pairing pairing);
-    void processConnectDeviceChanges(const QBluetoothAddress& address, bool isConnectEvent);
+    void processConnectDeviceChanges(const QBluetoothAddress &address, bool isConnectEvent);
+    void processDisplayConfirmation(const QBluetoothAddress &address, const QString &pin);
 
 private:
     QBluetoothLocalDevice *q_ptr;
     QAndroidJniObject *obj;
+
+    int pendingPairing(const QBluetoothAddress &address);
+
 public:
     LocalDeviceBroadcastReceiver *receiver;
-    bool inHostModeTransition;
+    bool pendingHostModeTransition;
     QList<QPair<QBluetoothAddress, bool> > pendingPairings;
+
     QList<QBluetoothAddress> connectedDevices;
 };
 

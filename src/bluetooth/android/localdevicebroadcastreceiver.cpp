@@ -52,6 +52,7 @@ LocalDeviceBroadcastReceiver::LocalDeviceBroadcastReceiver(QObject *parent) :
     addAction(QStringLiteral("android.bluetooth.adapter.action.SCAN_MODE_CHANGED"));
     addAction(QStringLiteral("android.bluetooth.device.action.ACL_CONNECTED"));
     addAction(QStringLiteral("android.bluetooth.device.action.ACL_DISCONNECTED"));
+    addAction(QStringLiteral("android.bluetooth.device.action.PAIRING_REQUEST")); //API 19
 
 }
 
@@ -149,7 +150,63 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
             return;
 
         emit connectDeviceChanges(address, isConnectEvent);
+    } else if (action == QStringLiteral("android.bluetooth.device.action.PAIRING_REQUEST")) {
+
+        QAndroidJniObject keyExtra = QAndroidJniObject::fromString(
+                    QStringLiteral("android.bluetooth.device.extra.PAIRING_VARIANT"));
+        int variant = intentObject.callMethod<jint>("getIntExtra",
+                                                    "(Ljava/lang/String;I)I",
+                                                    keyExtra.object<jstring>(),
+                                                    -1);
+
+        int key = -1;
+        switch (variant) {
+        case -1: //ignore -> no pairing variant set
+            return;
+        case 2: //BluetoothDevice.PAIRING_VARIANT_PASSKEY_CONFIRMATION
+        {
+            keyExtra = QAndroidJniObject::fromString(
+                        QStringLiteral("android.bluetooth.device.extra.PAIRING_KEY"));
+            key = intentObject.callMethod<jint>("getIntExtra",
+                                                    "(Ljava/lang/String;I)I",
+                                                    keyExtra.object<jstring>(),
+                                                    -1);
+            if (key == -1)
+                return;
+
+            keyExtra = QAndroidJniObject::fromString(
+                                QStringLiteral("android.bluetooth.device.extra.DEVICE"));
+            QAndroidJniObject bluetoothDevice =
+                    intentObject.callObjectMethod("getParcelableExtra",
+                                                  "(Ljava/lang/String;)Landroid/os/Parcelable;",
+                                                  keyExtra.object<jstring>());
+
+            //we need to keep a reference around in case the user confirms later on
+            pairingDevice = bluetoothDevice;
+
+            QBluetoothAddress address(bluetoothDevice.callObjectMethod<jstring>("getAddress").toString());
+
+            //User has choice to confirm or not. If no confirmation is happening
+            //the OS default pairing dialog can be used or timeout occurs.
+            emit pairingDisplayConfirmation(address, QString::number(key));
+            break;
+        }
+        default:
+            qWarning() << "Unknown pairing variant: " << variant;
+            return;
+        }
     }
+}
+
+bool LocalDeviceBroadcastReceiver::pairingConfirmation(bool accept)
+{
+    if (!pairingDevice.isValid())
+        return false;
+
+    bool success = pairingDevice.callMethod<jboolean>("setPairingConfirmation",
+                                              "(Z)Z", accept);
+    pairingDevice = QAndroidJniObject();
+    return success;
 }
 
 QT_END_NAMESPACE

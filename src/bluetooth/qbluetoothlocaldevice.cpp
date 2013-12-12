@@ -237,6 +237,10 @@ bool QBluetoothLocalDevice::isValid() const
   Signal by some platforms to display a pairing confirmation dialog for \a address.  The user
   is asked to confirm the \a pin is the same on both devices.  The \l pairingConfirmation() function
   must be called to indicate if the user accepts or rejects the displayed pin.
+
+  This signal is only emitted for pairing requests issues by calling \l requestPairing().
+
+  \sa pairingConfirmation()
 */
 
 /*!
@@ -244,6 +248,8 @@ bool QBluetoothLocalDevice::isValid() const
 
   To be called after getting a pairingDisplayConfirmation().  The \a accept parameter either
   accepts the pairing or rejects it.
+
+  Accepting a pairing always refers to the last pairing request issued via \l requestPairing().
 */
 
 /*!
@@ -251,6 +257,8 @@ bool QBluetoothLocalDevice::isValid() const
 
   Signal by some platforms to display the \a pin to the user for \a address.  The pin is automatically
   generated, and does not need to be confirmed.
+
+  This signal is only emitted for pairing requests issues by calling \l requestPairing().
 */
 
 /*!

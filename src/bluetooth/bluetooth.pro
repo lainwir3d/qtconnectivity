@@ -109,7 +109,7 @@ config_bluez:qtHaveModule(dbus) {
         jar/QtAndroidBluetooth.jar:org.qtproject.qt5.android.bluetooth.QtBluetoothBroadcastReceiver
 
     SOURCES += \
-        qbluetoothdevicediscoveryagent_p.cpp \
+        qbluetoothdevicediscoveryagent_android.cpp \
         qbluetoothlocaldevice_android.cpp \
         qbluetoothserviceinfo_p.cpp \
         qbluetoothservicediscoveryagent_p.cpp \

@@ -40,56 +40,148 @@
 **
 ****************************************************************************/
 
-#include "qbluetoothdevicediscoveryagent.h"
 #include "qbluetoothdevicediscoveryagent_p.h"
-#include "qbluetoothaddress.h"
-#include "qbluetoothuuid.h"
-#include "qbluetoothdeviceinfo.h"
-#include "qbluetoothlocaldevice_p.h"
-#include "android/jnithreadhelper_p.h"
+#include <QtCore/QDebug>
+#include <QtBluetooth/QBluetoothAddress>
+#include <QtBluetooth/QBluetoothDeviceInfo>
+#include "android/devicediscoverybroadcastreceiver_p.h"
 
 QT_BEGIN_NAMESPACE
 
-QBluetoothDeviceDiscoveryAgentPrivate::QBluetoothDeviceDiscoveryAgentPrivate(const QBluetoothAddress &deviceAdapter)
+QBluetoothDeviceDiscoveryAgentPrivate::QBluetoothDeviceDiscoveryAgentPrivate(
+                                                    const QBluetoothAddress &deviceAdapter)
+    : inquiryType(QBluetoothDeviceDiscoveryAgent::GeneralUnlimitedInquiry),
+      lastError(QBluetoothDeviceDiscoveryAgent::NoError), errorString(QStringLiteral()),
+      receiver(0),
+      m_adapterAddress(deviceAdapter),
+      m_active(false),
+      pendingCancel(false),
+      pendingStart(false)
 {
-    Q_UNUSED(deviceAdapter)
-    bReceiver = NULL;
+    adapter = QAndroidJniObject::callStaticObjectMethod("android/bluetooth/BluetoothAdapter",
+                                                        "getDefaultAdapter",
+                                                        "()Landroid/bluetooth/BluetoothAdapter;");
 }
 
 QBluetoothDeviceDiscoveryAgentPrivate::~QBluetoothDeviceDiscoveryAgentPrivate()
 {
-    delete bReceiver;
+    if (m_active)
+        stop();
+
+    delete receiver;
 }
 
 bool QBluetoothDeviceDiscoveryAgentPrivate::isActive() const
 {
-    return QBluetoothLocalDevicePrivate::isDiscovering();
+    if (pendingStart)
+        return true;
+    if (pendingCancel)
+        return false;
+    return m_active;
 }
 
 void QBluetoothDeviceDiscoveryAgentPrivate::start()
 {
-    Q_Q(QBluetoothDeviceDiscoveryAgent);
-
-    if (bReceiver == NULL) {
-        bReceiver = new DeviceDiscoveryBroadcastReceiver();
-        qRegisterMetaType<QBluetoothDeviceInfo>("QBluetoothDeviceInfo");
-        QObject::connect(bReceiver, SIGNAL(deviceDiscovered(const QBluetoothDeviceInfo&)), q, SIGNAL(deviceDiscovered(const QBluetoothDeviceInfo&)));
-        QObject::connect(bReceiver, SIGNAL(finished()), q, SIGNAL(finished()));
+    if (pendingCancel) {
+        pendingStart = true;
+        return;
     }
 
-    if (!QBluetoothLocalDevicePrivate::startDiscovery())
-        emit q->error(QBluetoothDeviceDiscoveryAgent::UnknownError);
+    Q_Q(QBluetoothDeviceDiscoveryAgent);
 
-    __android_log_print(ANDROID_LOG_DEBUG,"Qt", "QBluetoothDeviceDiscoveryAgentPrivate::start() - successfully executed.");
+    if (!adapter.isValid()) {
+        qWarning() << "Device does not support Bluetooth";
+        lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
+        errorString = QStringLiteral("Device does not support Bluetooth.");
+        emit q->error(lastError);
+        return;
+    }
+
+    //TODO change to new error enum InvalidBluetoothAdapterError
+    if (!m_adapterAddress.isNull() &&
+            adapter.callObjectMethod<jstring>("getAddress").toString() != m_adapterAddress.toString()) {
+        qWarning() << "Incorrect local adapter passed.";
+        lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
+        errorString = QStringLiteral("Passed address is not a local device.");
+        emit q->error(lastError);
+        return;
+    }
+
+    const int state = adapter.callMethod<jint>("getState");
+    if (state != 12 ) { //BluetoothAdapter.STATE_ON
+        lastError = QBluetoothDeviceDiscoveryAgent::PoweredOffError;
+        errorString = QStringLiteral("Device is powered off.");
+        emit q->error(lastError);
+        return;
+    }
+
+    //install Java BroadcastReceiver
+    if (!receiver) {
+        receiver = new DeviceDiscoveryBroadcastReceiver();
+        qRegisterMetaType<QBluetoothDeviceInfo>("QBluetoothDeviceInfo");
+        QObject::connect(receiver, SIGNAL(deviceDiscovered(const QBluetoothDeviceInfo&)),
+                         this, SLOT(processDiscoveredDevices(const QBluetoothDeviceInfo&)));
+        QObject::connect(receiver, SIGNAL(finished()), this, SLOT(processDiscoveryFinished()));
+    }
+
+    discoveredDevices.clear();
+
+    const bool success = adapter.callMethod<jboolean>("startDiscovery");
+    if (!success) {
+        lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
+        errorString = QStringLiteral("Discovery cannot be started.");
+        emit q->error(lastError);
+        return;
+    }
+
+    m_active = true;
+
+    qDebug() << "QBluetoothDeviceDiscoveryAgentPrivate::start() - successfully executed.";
 }
 
 void QBluetoothDeviceDiscoveryAgentPrivate::stop()
 {
     Q_Q(QBluetoothDeviceDiscoveryAgent);
-    if (QBluetoothLocalDevicePrivate::cancelDiscovery())
-        emit q->canceled();
-    else
-        emit q->error(QBluetoothDeviceDiscoveryAgent::PoweredOffError);
+
+    if (!m_active)
+        return;
+
+    pendingCancel = true;
+    pendingStart = false;
+    bool success = adapter.callMethod<jboolean>("cancelDiscovery");
+    if (!success) {
+        lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
+        errorString = QStringLiteral("Discovery cannot be stopped.");
+        emit q->error(lastError);
+        return;
+    }
 }
 
+void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveryFinished()
+{
+    if (!m_active) //We need to guard because Android sends two DISCOVERY_FINISHED when cancelling
+        return;
+
+    m_active = false;
+
+    Q_Q(QBluetoothDeviceDiscoveryAgent);
+
+    if (pendingCancel && !pendingStart) {
+        emit q->canceled();
+        pendingCancel = false;
+    } else if (pendingStart) {
+        pendingStart = pendingCancel = false;
+        start();
+    } else {
+        emit q->finished();
+    }
+}
+
+void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveredDevices(const QBluetoothDeviceInfo &info)
+{
+    Q_Q(QBluetoothDeviceDiscoveryAgent);
+
+    discoveredDevices.append(info);
+    emit q->deviceDiscovered(info);
+}
 QT_END_NAMESPACE

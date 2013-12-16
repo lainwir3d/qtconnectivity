@@ -126,43 +126,6 @@ void QBluetoothLocalDevicePrivate::initialize(const QBluetoothAddress &address)
     env->DeleteLocalRef(btAdapterClass);
 }
 
-//TODO: remove/shift function
-bool QBluetoothLocalDevicePrivate::startDiscovery()
-{
-//    JNIThreadHelper env;
-
-//    jmethodID startDiscoveryID = env->GetMethodID(btAdapterClass, "startDiscovery", "()Z");
-//    jboolean ret = env->CallBooleanMethod(btAdapterObject, startDiscoveryID);
-
-//    return ret;
-
-    //TODO
-    return true;
-}
-
-//TODO: remove/shift function
-bool QBluetoothLocalDevicePrivate::cancelDiscovery()
-{
-//    JNIThreadHelper env;
-
-//    jmethodID cancelDiscoveryID = env->GetMethodID(btAdapterClass, "cancelDiscovery", "()Z");
-//    jboolean ret = env->CallBooleanMethod(btAdapterObject, cancelDiscoveryID);
-
-    //TODO
-    return true;
-}
-
-//TODO: remove/shift function
-bool QBluetoothLocalDevicePrivate::isDiscovering()
-{
-//    JNIThreadHelper env;
-//    jmethodID isDiscoveringID = env->GetMethodID(btAdapterClass, "isDiscovering", "()Z");
-//    jboolean ret = env->CallBooleanMethod(btAdapterObject, isDiscoveringID);
-//    return ret;
-    //TODO
-    return true;
-}
-
 bool QBluetoothLocalDevicePrivate::isValid() const
 {
     return obj ? true : false;

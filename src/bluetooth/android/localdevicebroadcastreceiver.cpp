@@ -63,9 +63,7 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
 
     QAndroidJniObject intentObject(intent);
     const QString action = intentObject.callObjectMethod("getAction", "()Ljava/lang/String;").toString();
-    const QString arg = QStringLiteral("LocalDeviceBroadcastReceiver::onReceive() - event: %1").arg(action);
-
-    __android_log_print(ANDROID_LOG_DEBUG,"Qt", arg.toLatin1().constData());
+    qDebug() << QStringLiteral("LocalDeviceBroadcastReceiver::onReceive() - event: %1").arg(action);
 
     if (action == QStringLiteral("android.bluetooth.adapter.action.SCAN_MODE_CHANGED")) {
         QAndroidJniObject extrasBundle =

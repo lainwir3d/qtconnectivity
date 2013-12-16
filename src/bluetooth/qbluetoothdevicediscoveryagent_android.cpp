@@ -41,12 +41,14 @@
 ****************************************************************************/
 
 #include "qbluetoothdevicediscoveryagent_p.h"
-#include <QtCore/QDebug>
+#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/QBluetoothAddress>
 #include <QtBluetooth/QBluetoothDeviceInfo>
 #include "android/devicediscoverybroadcastreceiver_p.h"
 
 QT_BEGIN_NAMESPACE
+
+Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 QBluetoothDeviceDiscoveryAgentPrivate::QBluetoothDeviceDiscoveryAgentPrivate(
                                                     const QBluetoothAddress &deviceAdapter)
@@ -90,7 +92,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
     Q_Q(QBluetoothDeviceDiscoveryAgent);
 
     if (!adapter.isValid()) {
-        qWarning() << "Device does not support Bluetooth";
+        qCWarning(QT_BT_ANDROID) << "Device does not support Bluetooth";
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
         errorString = QStringLiteral("Device does not support Bluetooth.");
         emit q->error(lastError);
@@ -100,7 +102,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
     //TODO change to new error enum InvalidBluetoothAdapterError
     if (!m_adapterAddress.isNull() &&
             adapter.callObjectMethod<jstring>("getAddress").toString() != m_adapterAddress.toString()) {
-        qWarning() << "Incorrect local adapter passed.";
+        qCWarning(QT_BT_ANDROID) << "Incorrect local adapter passed.";
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
         errorString = QStringLiteral("Passed address is not a local device.");
         emit q->error(lastError);
@@ -136,7 +138,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
 
     m_active = true;
 
-    qDebug() << "QBluetoothDeviceDiscoveryAgentPrivate::start() - successfully executed.";
+    qCDebug(QT_BT_ANDROID) << "QBluetoothDeviceDiscoveryAgentPrivate::start() - successfully executed.";
 }
 
 void QBluetoothDeviceDiscoveryAgentPrivate::stop()

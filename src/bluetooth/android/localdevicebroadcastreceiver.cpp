@@ -39,11 +39,12 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QDebug>
-
+#include <QtCore/QLoggingCategory>
 #include "localdevicebroadcastreceiver_p.h"
 
 QT_BEGIN_NAMESPACE
+
+Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 LocalDeviceBroadcastReceiver::LocalDeviceBroadcastReceiver(QObject *parent) :
     AndroidBroadcastReceiver(parent), previousScanMode(0)
@@ -63,7 +64,7 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
 
     QAndroidJniObject intentObject(intent);
     const QString action = intentObject.callObjectMethod("getAction", "()Ljava/lang/String;").toString();
-    qDebug() << QStringLiteral("LocalDeviceBroadcastReceiver::onReceive() - event: %1").arg(action);
+    qCDebug(QT_BT_ANDROID) << QStringLiteral("LocalDeviceBroadcastReceiver::onReceive() - event: %1").arg(action);
 
     if (action == QStringLiteral("android.bluetooth.adapter.action.SCAN_MODE_CHANGED")) {
         QAndroidJniObject extrasBundle =
@@ -89,7 +90,7 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
                     emit hostModeStateChanged(QBluetoothLocalDevice::HostDiscoverable);
                     break;
                 default:
-                    qWarning() << "Unknown Host State";
+                    qCWarning(QT_BT_ANDROID) << "Unknown Host State";
                     break;
             }
         }
@@ -126,7 +127,7 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
             emit pairingStateChanged(address, QBluetoothLocalDevice::Paired);
             break;
         default:
-            qWarning() << "Unknown BOND_STATE_CHANGED value:" << bondState;
+            qCWarning(QT_BT_ANDROID) << "Unknown BOND_STATE_CHANGED value:" << bondState;
             break;
         }
     } else if (action == QStringLiteral("android.bluetooth.device.action.ACL_DISCONNECTED") ||
@@ -190,7 +191,7 @@ void LocalDeviceBroadcastReceiver::onReceive(JNIEnv *env, jobject context, jobje
             break;
         }
         default:
-            qWarning() << "Unknown pairing variant: " << variant;
+            qCWarning(QT_BT_ANDROID) << "Unknown pairing variant: " << variant;
             return;
         }
     }

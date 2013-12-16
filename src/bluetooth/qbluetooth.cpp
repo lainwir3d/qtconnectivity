@@ -39,6 +39,7 @@
 **
 ****************************************************************************/
 
+#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/qbluetooth.h>
 
 QT_BEGIN_NAMESPACE
@@ -75,5 +76,7 @@ namespace QBluetooth {
     Legacy pairing is not permitted.
 */
 }
+
+Q_LOGGING_CATEGORY(QT_BT_ANDROID, "qt.bluetooth.android")
 
 QT_END_NAMESPACE

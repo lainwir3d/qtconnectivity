@@ -41,11 +41,13 @@
 ****************************************************************************/
 
 #include "android/devicediscoverybroadcastreceiver_p.h"
-#include <QtCore/QDebug>
+#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/QBluetoothAddress>
 #include <QtBluetooth/QBluetoothDeviceInfo>
 
 QT_BEGIN_NAMESPACE
+
+Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 DeviceDiscoveryBroadcastReceiver::DeviceDiscoveryBroadcastReceiver(QObject* parent): AndroidBroadcastReceiver(parent)
 {
@@ -62,7 +64,7 @@ void DeviceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject context, j
     QAndroidJniObject intentObject(intent);
     const QString action = intentObject.callObjectMethod("getAction", "()Ljava/lang/String;").toString();
 
-    qDebug() << "DeviceDiscoveryBroadcastReceiver::onReceive() - event:" << action;
+    qCDebug(QT_BT_ANDROID) << "DeviceDiscoveryBroadcastReceiver::onReceive() - event:" << action;
 
     if (action == QStringLiteral("android.bluetooth.adapter.action.DISCOVERY_FINISHED") ) {
         emit finished();

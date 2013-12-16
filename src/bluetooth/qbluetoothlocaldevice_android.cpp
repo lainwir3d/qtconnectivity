@@ -40,7 +40,7 @@
 **
 ****************************************************************************/
 
-#include <android/log.h>
+#include <QtCore/QLoggingCategory>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
 #include <QtAndroidExtras/QAndroidJniObject>
 #include <QtBluetooth/QBluetoothLocalDevice>
@@ -50,9 +50,9 @@
 #include "android/localdevicebroadcastreceiver_p.h"
 #include "android/jni_android_p.h"
 
-#include <QDebug>
-
 QT_BEGIN_NAMESPACE
+
+Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 QBluetoothLocalDevicePrivate::QBluetoothLocalDevicePrivate(
         QBluetoothLocalDevice *q, const QBluetoothAddress &address)
@@ -89,20 +89,20 @@ void QBluetoothLocalDevicePrivate::initialize(const QBluetoothAddress &address)
 
     jclass btAdapterClass = env->FindClass("android/bluetooth/BluetoothAdapter");
     if (btAdapterClass == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"QtBluetooth", "Native registration unable to find class android/bluetooth/BluetoothAdapter");
+        qCWarning(QT_BT_ANDROID) << "Native registration unable to find class android/bluetooth/BluetoothAdapter";
         return;
     }
 
     jmethodID getDefaultAdapterID = env->GetStaticMethodID(btAdapterClass, "getDefaultAdapter", "()Landroid/bluetooth/BluetoothAdapter;");
     if (getDefaultAdapterID == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to get method ID: getDefaultAdapter of android/bluetooth/BluetoothAdapter");
+        qCWarning(QT_BT_ANDROID) << "Native registration unable to get method ID: getDefaultAdapter of android/bluetooth/BluetoothAdapter";
         return;
     }
 
 
     jobject btAdapterObject = env->CallStaticObjectMethod(btAdapterClass, getDefaultAdapterID);
     if (btAdapterObject == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Device does not support Bluetooth");
+        qCWarning(QT_BT_ANDROID) <<  "Device does not support Bluetooth";
         env->DeleteLocalRef(btAdapterClass);
         return;
     }
@@ -314,13 +314,13 @@ QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
     QAndroidJniEnvironment env;
     jclass btAdapterClass = env->FindClass("android/bluetooth/BluetoothAdapter");
     if (btAdapterClass == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"QtBluetooth", "Native registration unable to find class android/bluetooth/BluetoothAdapter");
+        qCWarning(QT_BT_ANDROID) << "Native registration unable to find class android/bluetooth/BluetoothAdapter";
         return localDevices;
     }
 
     jmethodID getDefaultAdapterID = env->GetStaticMethodID(btAdapterClass, "getDefaultAdapter", "()Landroid/bluetooth/BluetoothAdapter;");
     if (getDefaultAdapterID == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to get method ID: getDefaultAdapter of android/bluetooth/BluetoothAdapter");
+        qCWarning(QT_BT_ANDROID) << "Native registration unable to get method ID: getDefaultAdapter of android/bluetooth/BluetoothAdapter";
         env->DeleteLocalRef(btAdapterClass);
         return localDevices;
     }
@@ -328,7 +328,7 @@ QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
 
     jobject btAdapterObject = env->CallStaticObjectMethod(btAdapterClass, getDefaultAdapterID);
     if (btAdapterObject == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Device does not support Bluetooth");
+        qCWarning(QT_BT_ANDROID) << "Device does not support Bluetooth";
         env->DeleteLocalRef(btAdapterClass);
         return localDevices;
     }
@@ -370,7 +370,7 @@ void QBluetoothLocalDevice::requestPairing(const QBluetoothAddress &address, Pai
 
     //BluetoothDevice::createBond() requires Android API 19
     if (QtAndroid::androidApiLevel() < 19 || !d_ptr->adapter()) {
-        qWarning() << "Unable to pair: requires Android API 19+";
+        qCWarning(QT_BT_ANDROID) <<  "Unable to pair: requires Android API 19+";
         QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection,
                                     Q_ARG(QBluetoothLocalDevice::Error,
                                     QBluetoothLocalDevice::PairingError));

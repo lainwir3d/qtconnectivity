@@ -43,11 +43,13 @@
 #include <android/log.h>
 #include "android/androidbroadcastreceiver_p.h"
 #include <qpa/qplatformnativeinterface.h>
-#include <QtCore/QDebug>
+#include <QtCore/QLoggingCategory>
 #include <QtGui/QGuiApplication>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
 
 QT_BEGIN_NAMESPACE
+
+Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 class QPlatformNativeInterface;
 
@@ -61,13 +63,13 @@ AndroidBroadcastReceiver::AndroidBroadcastReceiver(QObject* parent)
     //get QtActivity
     QPlatformNativeInterface* nativeInterface = QGuiApplication::platformNativeInterface();
     if (nativeInterface == NULL) {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "QGuiApplication::platformNativeInterface(); returned NULL. Unable to initialize connectivity module.");
+        qCWarning(QT_BT_ANDROID) << "QGuiApplication::platformNativeInterface(); returned NULL. Unable to initialize connectivity module.";
         return;
     }
 
     void* pointer = QGuiApplication::platformNativeInterface()->nativeResourceForIntegration("QtActivity");
     if (pointer == NULL) {
-        qWarning() << "nativeResourceForWidget(\"ApplicationContext\", 0)" << " - failed.";
+        qCWarning(QT_BT_ANDROID) << "nativeResourceForWidget(\"ApplicationContext\", 0)" << " - failed.";
         return;
     }
 
@@ -83,7 +85,7 @@ AndroidBroadcastReceiver::AndroidBroadcastReceiver(QObject* parent)
     jclass objectClass = env->GetObjectClass(broadcastReceiverObject.object<jobject>());
     jint res = env->RegisterNatives(objectClass, methods, 1);
     if (res < 0) {
-        qWarning() << "Cannot register BroadcastReceiver::jniOnReceive";
+        qCWarning(QT_BT_ANDROID) << "Cannot register BroadcastReceiver::jniOnReceive";
         return;
     }
 

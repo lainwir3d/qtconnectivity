@@ -94,7 +94,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
     if (!adapter.isValid()) {
         qCWarning(QT_BT_ANDROID) << "Device does not support Bluetooth";
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
-        errorString = QStringLiteral("Device does not support Bluetooth.");
+        errorString = QBluetoothDeviceDiscoveryAgent::tr("Device does not support Bluetooth.");
         emit q->error(lastError);
         return;
     }
@@ -104,7 +104,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
             adapter.callObjectMethod<jstring>("getAddress").toString() != m_adapterAddress.toString()) {
         qCWarning(QT_BT_ANDROID) << "Incorrect local adapter passed.";
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
-        errorString = QStringLiteral("Passed address is not a local device.");
+        errorString = QBluetoothDeviceDiscoveryAgent::tr("Passed address is not a local device.");
         emit q->error(lastError);
         return;
     }
@@ -112,7 +112,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
     const int state = adapter.callMethod<jint>("getState");
     if (state != 12 ) { //BluetoothAdapter.STATE_ON
         lastError = QBluetoothDeviceDiscoveryAgent::PoweredOffError;
-        errorString = QStringLiteral("Device is powered off.");
+        errorString = QBluetoothDeviceDiscoveryAgent::tr("Device is powered off.");
         emit q->error(lastError);
         return;
     }
@@ -131,7 +131,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
     const bool success = adapter.callMethod<jboolean>("startDiscovery");
     if (!success) {
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
-        errorString = QStringLiteral("Discovery cannot be started.");
+        errorString = QBluetoothDeviceDiscoveryAgent::tr("Discovery cannot be started.");
         emit q->error(lastError);
         return;
     }
@@ -153,7 +153,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::stop()
     bool success = adapter.callMethod<jboolean>("cancelDiscovery");
     if (!success) {
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
-        errorString = QStringLiteral("Discovery cannot be stopped.");
+        errorString = QBluetoothDeviceDiscoveryAgent::tr("Discovery cannot be stopped.");
         emit q->error(lastError);
         return;
     }

@@ -184,6 +184,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveredDevices(const QBlue
     Q_Q(QBluetoothDeviceDiscoveryAgent);
 
     discoveredDevices.append(info);
+    qCDebug(QT_BT_ANDROID) << "Device found: " << info.name() << info.address().toString();
     emit q->deviceDiscovered(info);
 }
 QT_END_NAMESPACE

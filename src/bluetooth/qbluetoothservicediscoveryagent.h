@@ -114,6 +114,11 @@ private:
     Q_PRIVATE_SLOT(d_func(), void _q_discoveredServices(QDBusPendingCallWatcher*))
     Q_PRIVATE_SLOT(d_func(), void _q_createdDevice(QDBusPendingCallWatcher*))
 #endif
+#ifdef QT_ANDROID_BLUETOOTH
+    Q_PRIVATE_SLOT(d_func(), void _q_processFetchedUuids(const QBluetoothAddress &address,
+                                                         const QList<QBluetoothUuid>&))
+    Q_PRIVATE_SLOT(d_func(), void _q_fetchUuidsTimeout());
+#endif
 };
 
 QT_END_NAMESPACE

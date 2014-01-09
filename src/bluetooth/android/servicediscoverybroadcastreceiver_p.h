@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2013 Lauri Laanmets (Proekspert AS) <lauri.laanmets@eesti.ee>
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
+** Copyright (C) 2014 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtBluetooth module of the Qt Toolkit.
@@ -40,27 +39,30 @@
 **
 ****************************************************************************/
 
-#ifndef DEVICEDISCOVERYBROADCASTRECEIVER_H
-#define DEVICEDISCOVERYBROADCASTRECEIVER_H
+#ifndef SERVICEDISCOVERYBROADCASTRECEIVER_H
+#define SERVICEDISCOVERYBROADCASTRECEIVER_H
 
 #include "android/androidbroadcastreceiver_p.h"
+#include <QtCore/QList>
 #include <QtBluetooth/QBluetoothDeviceDiscoveryAgent>
+#include <QtBluetooth/QBluetoothUuid>
 
 QT_BEGIN_NAMESPACE
 
 class QBluetoothDeviceInfo;
 
-class DeviceDiscoveryBroadcastReceiver : public AndroidBroadcastReceiver
+class ServiceDiscoveryBroadcastReceiver : public AndroidBroadcastReceiver
 {
     Q_OBJECT
 public:
-    DeviceDiscoveryBroadcastReceiver(QObject* parent = 0);
+    ServiceDiscoveryBroadcastReceiver(QObject* parent = 0);
     virtual void onReceive(JNIEnv *env, jobject context, jobject intent);
 
+    static QList<QBluetoothUuid> convertParcelableArray(const QAndroidJniObject &obj);
+
 signals:
-    void deviceDiscovered(const QBluetoothDeviceInfo &info);
-    void finished();
+    void uuidFetchFinished(const QBluetoothAddress &addr, const QList<QBluetoothUuid> &serviceUuid);
 };
 
 QT_END_NAMESPACE
-#endif // DEVICEDISCOVERYBROADCASTRECEIVER_H
+#endif // SERVICEDISCOVERYBROADCASTRECEIVER_H

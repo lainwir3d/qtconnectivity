@@ -72,7 +72,9 @@ QT_BEGIN_NAMESPACE
 class QBluetoothDeviceDiscoveryAgent;
 #ifdef QT_ANDROID_BLUETOOTH
 class ServiceDiscoveryBroadcastReceiver;
+class LocalDeviceBroadcastReceiver;
 #include <QtAndroidExtras/QAndroidJniObject>
+#include <QtBluetooth/QBluetoothLocalDevice>
 #endif
 
 class QBluetoothServiceDiscoveryAgentPrivate
@@ -101,7 +103,7 @@ public:
     void stopServiceDiscovery();
 
     void setDiscoveryState(DiscoveryState s) { state = s; }
-    DiscoveryState discoveryState() { return state; }
+    inline DiscoveryState discoveryState() { return state; }
 
     void setDiscoveryMode(QBluetoothServiceDiscoveryAgent::DiscoveryMode m) { mode = m; }
     QBluetoothServiceDiscoveryAgent::DiscoveryMode DiscoveryMode() { return mode; }
@@ -121,6 +123,7 @@ public:
     void populateDiscoveredServices(const QBluetoothDeviceInfo &remoteDevice,
                                     const QList<QBluetoothUuid> &uuids);
     void _q_fetchUuidsTimeout();
+    void _q_hostModeStateChanged(QBluetoothLocalDevice::HostMode state);
 #endif
 
 private:
@@ -174,6 +177,8 @@ private:
 
 #ifdef QT_ANDROID_BLUETOOTH
     ServiceDiscoveryBroadcastReceiver *receiver;
+    LocalDeviceBroadcastReceiver *localDeviceReceiver;
+
     QAndroidJniObject btAdapter;
     QMap<QBluetoothAddress,QPair<QBluetoothDeviceInfo,QList<QBluetoothUuid> > > sdpCache;
 #endif

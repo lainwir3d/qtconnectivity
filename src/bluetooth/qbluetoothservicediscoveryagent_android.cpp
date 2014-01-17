@@ -48,6 +48,7 @@
 
 #include "qbluetoothservicediscoveryagent_p.h"
 #include "android/servicediscoverybroadcastreceiver_p.h"
+#include "android/localdevicebroadcastreceiver_p.h"
 #include "android/jni_android_p.h"
 
 QT_BEGIN_NAMESPACE
@@ -61,10 +62,9 @@ QBluetoothServiceDiscoveryAgentPrivate::QBluetoothServiceDiscoveryAgentPrivate(
     : error(QBluetoothServiceDiscoveryAgent::NoError),
       state(Inactive), deviceDiscoveryAgent(0),
       mode(QBluetoothServiceDiscoveryAgent::MinimalDiscovery),
-      singleDevice(false), receiver(0)
+      singleDevice(false), receiver(0), localDeviceReceiver(0)
 {
     QList<QBluetoothHostInfo> devices = QBluetoothLocalDevice::allDevices();
-    qCDebug(QT_BT_ANDROID) << devices.count();
     Q_ASSERT(devices.count() == 1); //Android only supports one device at the moment
 
     if (deviceAdapter.isNull() && devices.count() > 0 )
@@ -99,6 +99,7 @@ QBluetoothServiceDiscoveryAgentPrivate::QBluetoothServiceDiscoveryAgentPrivate(
 QBluetoothServiceDiscoveryAgentPrivate::~QBluetoothServiceDiscoveryAgentPrivate()
 {
     delete receiver;
+    delete localDeviceReceiver;
 }
 
 void QBluetoothServiceDiscoveryAgentPrivate::start(const QBluetoothAddress &address)
@@ -132,6 +133,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::start(const QBluetoothAddress &addr
         errorString = QBluetoothServiceDiscoveryAgent::tr("Android API below v15 does not support SDP discovery.");
 
         //abort any outstanding discoveries
+        sdpCache.clear();
         discoveredDevices.clear();
         emit q->error(error);
         _q_serviceDiscoveryFinished();
@@ -149,6 +151,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::start(const QBluetoothAddress &addr
         env->ExceptionClear();
         env->ExceptionDescribe();
 
+        //if it was only device then its error -> otherwise go to next device
         if (singleDevice) {
             error = QBluetoothServiceDiscoveryAgent::InputOutputError;
             errorString = QBluetoothServiceDiscoveryAgent::tr("Cannot create Android BluetoothDevice.");
@@ -197,8 +200,17 @@ void QBluetoothServiceDiscoveryAgentPrivate::start(const QBluetoothAddress &addr
                     q, SLOT(_q_processFetchedUuids(const QBluetoothAddress&,const QList<QBluetoothUuid>&)));
         }
 
+        if (!localDeviceReceiver) {
+            localDeviceReceiver = new LocalDeviceBroadcastReceiver();
+            QObject::connect(localDeviceReceiver, SIGNAL(hostModeStateChanged(QBluetoothLocalDevice::HostMode)),
+                             q, SLOT(_q_hostModeStateChanged(QBluetoothLocalDevice::HostMode)));
+        }
+
         jboolean result = remoteDevice.callMethod<jboolean>("fetchUuidsWithSdp");
         if (!result) {
+            //kill receiver to limit load of signals
+            receiver->deleteLater();
+            receiver = 0;
             qCWarning(QT_BT_ANDROID) << "Cannot start dynamic fetch.";
             _q_serviceDiscoveryFinished();
         }
@@ -209,6 +221,11 @@ void QBluetoothServiceDiscoveryAgentPrivate::stop()
 {
     sdpCache.clear();
     discoveredDevices.clear();
+
+    //kill receiver to limit load of signals
+    receiver->deleteLater();
+    receiver = 0;
+
     Q_Q(QBluetoothServiceDiscoveryAgent);
     emit q->canceled();
 
@@ -217,18 +234,19 @@ void QBluetoothServiceDiscoveryAgentPrivate::stop()
 void QBluetoothServiceDiscoveryAgentPrivate::_q_processFetchedUuids(
     const QBluetoothAddress &address, const QList<QBluetoothUuid> &uuids)
 {
-    qCDebug(QT_BT_ANDROID) << "Found UUID for" << address.toString()
-                           << "\ncount: " << uuids.count();
+    //don't leave more data through if we are not interested anymore
+    if (discoveredDevices.count() == 0)
+        return;
 
     if (QT_BT_ANDROID().isDebugEnabled()) {
+        qCDebug(QT_BT_ANDROID) << "Found UUID for" << address.toString()
+                               << "\ncount: " << uuids.count();
+
         QString result;
         for (int i = 0; i<uuids.count(); i++)
             result += uuids.at(i).toString() + QStringLiteral("**");
         qCDebug(QT_BT_ANDROID) << result;
     }
-
-    if (discoveredDevices.count() == 0)
-        return;
 
     /* In general there are two uuid events per device.
      * We'll wait for the second event to arrive before we process the UUIDs.
@@ -241,9 +259,12 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_processFetchedUuids(
     if (sdpCache.contains(address)) {
         //second event
         QPair<QBluetoothDeviceInfo,QList<QBluetoothUuid> > pair = sdpCache.take(address);
-        populateDiscoveredServices(pair.first, pair.second);
 
-        if (discoveredDevices.count() == 1) {
+        //prefer second uuid set over first
+        populateDiscoveredServices(pair.first, uuids);
+
+        if (discoveredDevices.count() == 1 && sdpCache.isEmpty()) {
+            //last regular uuid data set from OS -> we finish here
             _q_serviceDiscoveryFinished();
         }
     } else {
@@ -252,7 +273,9 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_processFetchedUuids(
         pair.first = discoveredDevices.at(0);
         pair.second = uuids;
 
-        Q_ASSERT(pair.first.address() == address);
+        if (pair.first.address() != address)
+            return;
+
         sdpCache.insert(address, pair);
 
         //the discovery on the last device cannot immediately finish
@@ -425,9 +448,23 @@ void QBluetoothServiceDiscoveryAgentPrivate::populateDiscoveredServices(const QB
             serviceInfo.setServiceName(serviceNameForClassUuid(uuids.at(i).data1));
         }
 
-        discoveredServices << serviceInfo;
-        //qCDebug(QT_BT_ANDROID) << serviceInfo;
-        emit q->serviceDiscovered(serviceInfo);
+        //don't include the service if we already discovered it before
+        bool alreadyDiscovered = false;
+        for (int i = 0; i < discoveredServices.count(); i++) {
+            const QBluetoothServiceInfo &info = discoveredServices.at(i);
+            if (info.device() == serviceInfo.device()
+                    && info.serviceClassUuids() == serviceInfo.serviceClassUuids()
+                    && info.serviceUuid() == serviceInfo.serviceUuid()) {
+                alreadyDiscovered = true;
+                break;
+            }
+        }
+
+        if (!alreadyDiscovered) {
+            discoveredServices << serviceInfo;
+            //qCDebug(QT_BT_ANDROID) << serviceInfo;
+            emit q->serviceDiscovered(serviceInfo);
+        }
     }
 }
 
@@ -444,7 +481,31 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_fetchUuidsTimeout()
     }
 
     Q_ASSERT(sdpCache.isEmpty());
+
+    //kill receiver to limit load of signals
+    receiver->deleteLater();
+    receiver = 0;
     _q_serviceDiscoveryFinished();
+}
+
+void QBluetoothServiceDiscoveryAgentPrivate::_q_hostModeStateChanged(QBluetoothLocalDevice::HostMode state)
+{
+    if (discoveryState() == QBluetoothServiceDiscoveryAgentPrivate::ServiceDiscovery &&
+            state == QBluetoothLocalDevice::HostPoweredOff ) {
+
+        discoveredDevices.clear();
+        sdpCache.clear();
+        error = QBluetoothServiceDiscoveryAgent::PoweredOffError;
+        errorString = QBluetoothServiceDiscoveryAgent::tr("Device is powered off.");
+
+        //kill receiver to limit load of signals
+        receiver->deleteLater();
+        receiver = 0;
+
+        Q_Q(QBluetoothServiceDiscoveryAgent);
+        emit q->error(error);
+        _q_serviceDiscoveryFinished();
+    }
 }
 
 QT_END_NAMESPACE

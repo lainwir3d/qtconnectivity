@@ -117,7 +117,8 @@ private:
 #ifdef QT_ANDROID_BLUETOOTH
     Q_PRIVATE_SLOT(d_func(), void _q_processFetchedUuids(const QBluetoothAddress &address,
                                                          const QList<QBluetoothUuid>&))
-    Q_PRIVATE_SLOT(d_func(), void _q_fetchUuidsTimeout());
+    Q_PRIVATE_SLOT(d_func(), void _q_fetchUuidsTimeout())
+    Q_PRIVATE_SLOT(d_func(), void _q_hostModeStateChanged(QBluetoothLocalDevice::HostMode state))
 #endif
 };
 

@@ -71,9 +71,9 @@ void ServiceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject context, 
                                                 "getParcelableArrayExtra",
                                                 "(Ljava/lang/String;)[Landroid/os/Parcelable;",
                                                 keyExtra.object<jstring>());
+        if (!parcelableUuids.isValid())
+            return;
         QList<QBluetoothUuid> result = ServiceDiscoveryBroadcastReceiver::convertParcelableArray(parcelableUuids);
-
-
 
         keyExtra = QAndroidJniObject::fromString(
                                  QStringLiteral("android.bluetooth.device.extra.DEVICE"));
@@ -81,12 +81,11 @@ void ServiceDiscoveryBroadcastReceiver::onReceive(JNIEnv *env, jobject context, 
         intentObject.callObjectMethod("getParcelableExtra",
                                   "(Ljava/lang/String;)Landroid/os/Parcelable;",
                                   keyExtra.object<jstring>());
-
         QBluetoothAddress address;
-        if (bluetoothDevice.isValid())
+        if (bluetoothDevice.isValid()) {
             address = QBluetoothAddress(bluetoothDevice.callObjectMethod<jstring>("getAddress").toString());
-
-        emit uuidFetchFinished(address, result);
+            emit uuidFetchFinished(address, result);
+        }
     }
 }
 
@@ -97,6 +96,9 @@ QList<QBluetoothUuid> ServiceDiscoveryBroadcastReceiver::convertParcelableArray(
     QAndroidJniObject p;
 
     jobjectArray parcels = parcelUuidArray.object<jobjectArray>();
+    if (!parcels)
+        return result;
+
     jint size = env->GetArrayLength(parcels);
     for (int i = 0; i < size; i++) {
         p = env->GetObjectArrayElement(parcels, i);

@@ -175,6 +175,14 @@ void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveryFinished()
         pendingStart = pendingCancel = false;
         start();
     } else {
+        //check that it didn't finish due to turned off Bluetooth Device
+        const int state = adapter.callMethod<jint>("getState");
+        if (state != 12 ) { //BluetoothAdapter.STATE_ON
+            lastError = QBluetoothDeviceDiscoveryAgent::PoweredOffError;
+            errorString = QBluetoothDeviceDiscoveryAgent::tr("Device is powered off.");
+            emit q->error(lastError);
+            return;
+        }
         emit q->finished();
     }
 }

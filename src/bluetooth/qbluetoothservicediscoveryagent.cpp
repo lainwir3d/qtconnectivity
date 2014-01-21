@@ -39,6 +39,8 @@
 **
 ****************************************************************************/
 
+#include "qbluetoothhostinfo.h"
+#include "qbluetoothlocaldevice.h"
 #include "qbluetoothservicediscoveryagent.h"
 #include "qbluetoothservicediscoveryagent_p.h"
 
@@ -67,6 +69,10 @@ QT_BEGIN_NAMESPACE
     use cases this is adequate as QBluetoothSocket::connectToService() will perform additional
     discovery if required.  If full service information is required, pass \l FullDiscovery as the
     discoveryMode parameter to start().
+
+    This class may internally utilize \l QBluetoothDeviceDiscoveryAgent to find unknown devices.
+
+    \sa QBluetoothDeviceDiscoveryAgent
 */
 
 /*!
@@ -77,6 +83,8 @@ QT_BEGIN_NAMESPACE
     \value NoError          No error has occurred.
     \value PoweredOffError  The Bluetooth adaptor is powered off, power it on before doing discovery.
     \value InputOutputError    Writing or reading from the device resulted in an error.
+    \value InvalidBluetoothAdapterError The passed local adapter address does not match the physical
+                                        adapter address of any local Bluetooth device.
     \value UnknownError     An unknown error has occurred.
 */
 
@@ -99,20 +107,24 @@ QT_BEGIN_NAMESPACE
 /*!
     \fn QBluetoothServiceDiscoveryAgent::finished()
 
-    This signal is emitted when Bluetooth service discovery completes. This signal will even
-    be emitted when an error occurred during the service discovery.
+    This signal is emitted when the Bluetooth service discovery completes.
+
+    Unlike the \l QBluetoothDeviceDiscoveryAgent::finished() signal this
+    signal will even be emitted when an error occurred during the service discovery. Therefore
+    it is recommended to check the \l error() signal to evaluate the success of the
+    service discovery discovery.
 */
 
 /*!
     \fn void QBluetoothServiceDiscoveryAgent::error(QBluetoothServiceDiscoveryAgent::Error error)
 
-    This signal is emitted when an error occurs. The \a error parameter describes the error that
+    This signal is emitted when an \a error occurs. The \a error parameter describes the error that
     occurred.
 */
 
 /*!
-    Constructs a new QBluetoothServiceDiscoveryAgent with \a parent. Services will be discovered on all
-    contactable devices.
+    Constructs a new QBluetoothServiceDiscoveryAgent with \a parent. The search is performed via the
+    local default Bluetooth adapter.
 */
 QBluetoothServiceDiscoveryAgent::QBluetoothServiceDiscoveryAgent(QObject *parent)
 : QObject(parent), d_ptr(new QBluetoothServiceDiscoveryAgentPrivate(QBluetoothAddress()))
@@ -123,12 +135,28 @@ QBluetoothServiceDiscoveryAgent::QBluetoothServiceDiscoveryAgent(QObject *parent
 /*!
     Constructs a new QBluetoothServiceDiscoveryAgent for \a deviceAdapter and with \a parent.
 
-    If \a deviceAdapter is null, the default adapter will be used.
+    It uses \a deviceAdapter for the service search. If \a deviceAdapter is default constructed
+    the resulting QBluetoothServiceDiscoveryAgent object will use the local default Bluetooth adapter.
+
+    If a \a deviceAdapter is specified that is not a local adapter \l error() will be set to
+    \l InvalidBluetoothAdapterError. Therefore it is recommended to test the error flag immediately after
+    using this constructor.
+
+    \sa error()
 */
 QBluetoothServiceDiscoveryAgent::QBluetoothServiceDiscoveryAgent(const QBluetoothAddress &deviceAdapter, QObject *parent)
 : QObject(parent), d_ptr(new QBluetoothServiceDiscoveryAgentPrivate(deviceAdapter))
 {
     d_ptr->q_ptr = this;
+    if (!deviceAdapter.isNull()) {
+        const QList<QBluetoothHostInfo> localDevices = QBluetoothLocalDevice::allDevices();
+        foreach (const QBluetoothHostInfo &hostInfo, localDevices) {
+            if (hostInfo.address() == deviceAdapter)
+                return;
+        }
+        d_ptr->error = InvalidBluetoothAdapterError;
+        d_ptr->errorString = tr("Invalid Bluetooth adapter address");
+    }
 }
 
 /*!
@@ -234,7 +262,8 @@ void QBluetoothServiceDiscoveryAgent::start(DiscoveryMode mode)
 {
     Q_D(QBluetoothServiceDiscoveryAgent);
 
-    if (d->discoveryState() == QBluetoothServiceDiscoveryAgentPrivate::Inactive) {
+    if (d->discoveryState() == QBluetoothServiceDiscoveryAgentPrivate::Inactive
+            && d->error != InvalidBluetoothAdapterError) {
         d->setDiscoveryMode(mode);
         if (d->deviceAddress.isNull()) {
             d->startDeviceDiscovery();
@@ -251,6 +280,9 @@ void QBluetoothServiceDiscoveryAgent::start(DiscoveryMode mode)
 void QBluetoothServiceDiscoveryAgent::stop()
 {
     Q_D(QBluetoothServiceDiscoveryAgent);
+
+    if (d->error == InvalidBluetoothAdapterError)
+        return;
 
     switch (d->discoveryState()) {
     case QBluetoothServiceDiscoveryAgentPrivate::DeviceDiscovery:
@@ -372,7 +404,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_deviceDiscoveryFinished()
     if (deviceDiscoveryAgent->error() != QBluetoothDeviceDiscoveryAgent::NoError) {
         //Forward the device discovery error
         error = static_cast<QBluetoothServiceDiscoveryAgent::Error>(deviceDiscoveryAgent->error());
-
+        errorString = deviceDiscoveryAgent->errorString();
         setDiscoveryState(Inactive);
         Q_Q(QBluetoothServiceDiscoveryAgent);
         emit q->error(error);
@@ -388,28 +420,18 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_deviceDiscoveryFinished()
 
 void QBluetoothServiceDiscoveryAgentPrivate::_q_deviceDiscovered(const QBluetoothDeviceInfo &info)
 {
-    if(mode == QBluetoothServiceDiscoveryAgent::FullDiscovery) {
-        // look for duplicates, and cached entries
-        for(int i = 0; i < discoveredDevices.count(); i++){
-            if(discoveredDevices.at(i).address() == info.address()){
-                discoveredDevices.removeAt(i);
-            }
-        }
-        discoveredDevices.prepend(info);
+    // look for duplicates, and cached entries
+    for (int i = 0; i < discoveredDevices.count(); i++) {
+        if (discoveredDevices.at(i).address() == info.address())
+            discoveredDevices.removeAt(i);
     }
-    else {
-        for(int i = 0; i < discoveredDevices.count(); i++){
-            if(discoveredDevices.at(i).address() == info.address()){
-                discoveredDevices.removeAt(i);
-            }
-        }
-        discoveredDevices.prepend(info);
-    }
+    discoveredDevices.prepend(info);
 }
 
 void QBluetoothServiceDiscoveryAgentPrivate::_q_deviceDiscoveryError(QBluetoothDeviceDiscoveryAgent::Error newError)
 {
     error = static_cast<QBluetoothServiceDiscoveryAgent::Error>(newError);
+    errorString = deviceDiscoveryAgent->errorString();
 
     deviceDiscoveryAgent->stop();
     delete deviceDiscoveryAgent;
@@ -427,8 +449,6 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_deviceDiscoveryError(QBluetoothD
 void QBluetoothServiceDiscoveryAgentPrivate::startServiceDiscovery()
 {
     Q_Q(QBluetoothServiceDiscoveryAgent);
-
-    setDiscoveryState(ServiceDiscovery);
 
     if (discoveredDevices.isEmpty()) {
         setDiscoveryState(Inactive);

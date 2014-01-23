@@ -161,7 +161,10 @@ void QBluetoothDeviceDiscoveryAgentPrivate::stop()
 
 void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveryFinished()
 {
-    if (!m_active) //We need to guard because Android sends two DISCOVERY_FINISHED when cancelling
+    //We need to guard because Android sends two DISCOVERY_FINISHED when cancelling
+    //Also if we have two active agents both receive the same signal.
+    //If this one is not active ignore the device information
+    if (!m_active)
         return;
 
     m_active = false;
@@ -189,6 +192,11 @@ void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveryFinished()
 
 void QBluetoothDeviceDiscoveryAgentPrivate::processDiscoveredDevices(const QBluetoothDeviceInfo &info)
 {
+    //If we have two active agents both receive the same signal.
+    // If this one is not active ignore the device information
+    if (!m_active)
+        return;
+
     Q_Q(QBluetoothDeviceDiscoveryAgent);
 
     discoveredDevices.append(info);

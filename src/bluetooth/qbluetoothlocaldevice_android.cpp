@@ -436,6 +436,7 @@ void QBluetoothLocalDevice::pairingConfirmation(bool confirmation)
 
 QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
 {
+    //TODO Support BLuetoothManager::getConnectedDevices(int) from API 18 onwards
     return d_ptr->connectedDevices;
 }
 

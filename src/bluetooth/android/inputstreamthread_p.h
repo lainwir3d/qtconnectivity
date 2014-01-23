@@ -1,7 +1,7 @@
 /****************************************************************************
 **
 ** Copyright (C) 2013 Lauri Laanmets (Proekspert AS) <lauri.laanmets@eesti.ee>
-** Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
+** Copyright (C) 2014 Digia Plc and/or its subsidiary(-ies).
 ** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtBluetooth module of the Qt Toolkit.
@@ -43,7 +43,8 @@
 #ifndef INPUTSTREAMTHREAD_H
 #define INPUTSTREAMTHREAD_H
 
-#include <QThread>
+#include <QtCore/QThread>
+#include <QtCore/QMutex>
 
 QT_BEGIN_NAMESPACE
 
@@ -51,16 +52,30 @@ class QBluetoothSocketPrivate;
 
 class InputStreamThread : public QThread
 {
-    //Q_OBJECT
+    Q_OBJECT
 public:
     explicit InputStreamThread(QBluetoothSocketPrivate *socket_p);
     virtual void run();
-signals:
-    void dataAvailable(int byte);
 
-public slots:
+    bool hasError() const;
+    bool bytesAvalable() const;
+
+    void stop();
+
+    qint64 readData(char *data, qint64 maxSize);
+signals:
+    void dataAvailable();
+    void error();
+
 private:
+    void readFromInputStream();
+
     QBluetoothSocketPrivate *m_socket_p;
+    mutable QMutex m_mutex;
+    bool m_stop;
+    bool isError;
+
+
 };
 
 QT_END_NAMESPACE

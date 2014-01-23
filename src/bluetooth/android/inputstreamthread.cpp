@@ -40,6 +40,8 @@
 **
 ****************************************************************************/
 
+#include <QtAndroidExtras/QAndroidJniEnvironment>
+
 #include "android/inputstreamthread_p.h"
 #include "qbluetoothsocket_p.h"
 
@@ -47,6 +49,7 @@ QT_BEGIN_NAMESPACE
 
 
 InputStreamThread::InputStreamThread(QBluetoothSocketPrivate *socket)
+    : QThread(), m_stop(false), isError(false)
 {
     m_socket_p = socket;
 }
@@ -55,9 +58,85 @@ void InputStreamThread::run()
 {
     qint32 byte;
     Q_UNUSED(byte)
-    while (m_socket_p->state == QBluetoothSocket::ConnectedState)
-        byte = m_socket_p->read();
+    while (1) {
+        QMutexLocker locker(&m_mutex);
+        if (m_stop || isError)
+            break;
+        readFromInputStream();
+    }
+
+    if (m_socket_p->inputStream.isValid())
+        m_socket_p->inputStream.callMethod<void>("close");
 }
 
+bool InputStreamThread::hasError() const
+{
+    QMutexLocker locker(&m_mutex);
+
+    return isError;
+}
+
+bool InputStreamThread::bytesAvalable() const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_socket_p->buffer.size();
+}
+
+//This runs inside the mutex and thread.
+void InputStreamThread::readFromInputStream()
+{
+    QAndroidJniEnvironment env;
+
+    //TODO this is bad, we need proper blocking detection
+    jint count = m_socket_p->inputStream.callMethod<jint>("available");
+    if (count <= 0)
+        return;
+
+    int bufLen = 1000; // Seems to magical number that also low-end products can survive.
+    jbyteArray nativeArray = env->NewByteArray(bufLen);
+    qDebug() << "wwwwww";
+    jint ret = m_socket_p->inputStream.callMethod<jint>("read", "([BII)I", nativeArray, 0, bufLen);
+
+    qDebug() << "ddddd" << ret;
+    if (env->ExceptionCheck() || ret < 0) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+        env->DeleteLocalRef(nativeArray);
+        isError = true;
+        QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection);
+        return;
+    }
+
+    if (ret == 0) {
+        qDebug() << "Nothing to read";
+        env->DeleteLocalRef(nativeArray);
+        return;
+    }
+
+    char *writePtr = m_socket_p->buffer.reserve(bufLen);
+    env->GetByteArrayRegion(nativeArray, 0, ret, reinterpret_cast<jbyte*>(writePtr));
+    env->DeleteLocalRef(nativeArray);
+    m_socket_p->buffer.chop(bufLen - ret);
+    emit dataAvailable();
+}
+
+void InputStreamThread::stop()
+{
+    QMutexLocker locker(&m_mutex);
+    m_stop = true;
+}
+
+qint64 InputStreamThread::readData(char *data, qint64 maxSize)
+{
+    QMutexLocker locker(&m_mutex);
+
+    if (isError)
+        return -1;
+
+    if (!m_socket_p->buffer.isEmpty())
+        return m_socket_p->buffer.read(data, maxSize);
+
+    return 0;
+}
 
 QT_END_NAMESPACE

@@ -68,6 +68,9 @@ QBluetoothSocketPrivate::~QBluetoothSocketPrivate()
 bool QBluetoothSocketPrivate::ensureNativeSocket(QBluetoothServiceInfo::Protocol type)
 {
     socketType = type;
+    if (socketType == QBluetoothServiceInfo::RfcommProtocol)
+        return true;
+
     return false;
 }
 

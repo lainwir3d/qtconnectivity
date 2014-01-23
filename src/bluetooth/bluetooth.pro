@@ -113,7 +113,7 @@ config_bluez:qtHaveModule(dbus) {
         qbluetoothlocaldevice_android.cpp \
         qbluetoothserviceinfo_p.cpp \
         qbluetoothservicediscoveryagent_android.cpp \
-        qbluetoothsocket_p.cpp \
+        qbluetoothsocket_android.cpp \
         qbluetoothserver_p.cpp
 
 } else {

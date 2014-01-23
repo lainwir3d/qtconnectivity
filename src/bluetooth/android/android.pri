@@ -1,5 +1,5 @@
 PRIVATE_HEADERS +=  \
-#        android/inputstreamthread_p.h \
+        android/inputstreamthread_p.h \
         android/devicediscoverybroadcastreceiver_p.h \
         android/servicediscoverybroadcastreceiver_p.h \
         android/androidbroadcastreceiver_p.h \
@@ -7,7 +7,7 @@ PRIVATE_HEADERS +=  \
         android/jni_android_p.h
 
 SOURCES += \
-#        android/inputstreamthread.cpp \
+        android/inputstreamthread.cpp \
         android/devicediscoverybroadcastreceiver.cpp \
         android/servicediscoverybroadcastreceiver.cpp \
         android/jni_android.cpp \

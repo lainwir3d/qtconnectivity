@@ -48,6 +48,7 @@
 #include "qnx/ppshelpers_p.h"
 #endif
 #ifdef QT_ANDROID_BLUETOOTH
+#include <QtAndroidExtras/QAndroidJniObject>
 #include "android/inputstreamthread_p.h"
 #include <jni.h>
 #endif
@@ -78,7 +79,7 @@ class QBluetoothSocket;
 class QBluetoothServiceDiscoveryAgent;
 
 class QBluetoothSocketPrivate
-#ifdef QT_QNX_BLUETOOTH
+#if defined(QT_QNX_BLUETOOTH) || defined(QT_ANDROID_BLUETOOTH)
 : public QObject
 {
     Q_OBJECT
@@ -92,15 +93,13 @@ public:
     ~QBluetoothSocketPrivate();
 
 //On qnx we connect using the uuid not the port
-#ifdef QT_QNX_BLUETOOTH
+#if defined(QT_QNX_BLUETOOTH) || defined(QT_ANDROID_BLUETOOTH)
     void connectToService(const QBluetoothAddress &address, QBluetoothUuid uuid, QIODevice::OpenMode openMode);
 #else
     void connectToService(const QBluetoothAddress &address, quint16 port, QIODevice::OpenMode openMode);
 #endif
 #ifdef QT_ANDROID_BLUETOOTH
-    void connectToServiceConc(const QBluetoothAddress &address, quint16 port, QIODevice::OpenMode openMode);
-    jobject socketObject;
-    jobject remoteDeviceObject;
+    void connectToServiceConc(const QBluetoothAddress &address, const QBluetoothUuid &uuid, QIODevice::OpenMode openMode);
 #endif
 
 
@@ -157,10 +156,16 @@ public:
     void _q_discoveryFinished();
 
 #ifdef QT_ANDROID_BLUETOOTH
-    jobject inputStream;
-    jobject outputStream;
+    QAndroidJniObject adapter;
+    QAndroidJniObject socketObject;
+    QAndroidJniObject remoteDevice;
+    QAndroidJniObject inputStream;
+    QAndroidJniObject outputStream;
     InputStreamThread *inputThread;
-    qint32 read();
+
+private Q_SLOTS:
+    void inputThreadError();
+
 #endif
 
 protected:

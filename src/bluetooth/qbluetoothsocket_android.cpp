@@ -43,156 +43,164 @@
 #include "qbluetoothsocket.h"
 #include "qbluetoothsocket_p.h"
 #include "qbluetoothaddress.h"
-#include "qbluetoothlocaldevice_p.h"
-#include <QTime>
-#include <string.h>
-#include <QtConcurrentRun>
-#include "android/jnithreadhelper_p.h"
+#include <QtCore/QLoggingCategory>
+#include <QtCore/QTime>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QtAndroidExtras/QAndroidJniEnvironment>
 
 
 QT_BEGIN_NAMESPACE
 
-static jclass btAdapterClass;
-static jobject btAdapterObject;
+Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
-
-/*
-jobject defineClass() {
-
-    jclass dexClassLoaderClass = m_env->FindClass("dalvik/system/DexClassLoader");
-    jmethodID dexClassLoaderConstructorID = m_env->GetMethodID(dexClassLoaderClass, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)V"); // no parameters
-
-    jstring jarFile = m_env->NewStringUTF("/data/local/qt/lib/JNIRunnable.jar");
-    jstring temp = m_env->NewStringUTF("/data/local/qt/temp");
-    jstring className = m_env->NewStringUTF("JNIRunnable");
-
-    jclass classLoaderClass = m_env->FindClass("java/lang/ClassLoader");
-    jmethodID getSystemClassLoaderID = m_env->GetStaticMethodID(classLoaderClass, "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
-
-    jobject systemClassLoaderObject = m_env->CallStaticObjectMethod(classLoaderClass, getSystemClassLoaderID);
-
-    jobject dexClassLoaderObject = m_env->NewObject(dexClassLoaderClass, dexClassLoaderConstructorID, jarFile,temp, temp, systemClassLoaderObject);
-
-    jmethodID loadClassID = m_env->GetMethodID(dexClassLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-    jobject jniRunnableClassObject = m_env->CallObjectMethod(dexClassLoaderObject, loadClassID, className);
-
-    jclass classClass = m_env->FindClass("java/lang/Class");
-    jmethodID newInstanceID = m_env->GetMethodID(classClass, "newInstance", "()Ljava/lang/Object;");
-    QtConnectivityJni::javaRunnableObject = m_env->CallObjectMethod(jniRunnableClassObject, newInstanceID);
-    QtConnectivityJni::javaRunnableObject = m_env->NewGlobalRef(QtConnectivityJni::javaRunnableObject);
-
-
-    //jmethodID getFieldID = m_env->GetMethodID(classClass, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;");
-    //jstring fieldName = m_env->NewStringUTF("qtObject");
-    //jobject fieldReflectedObject = m_env->CallObjectMethod(jniRunnableClassObject, getFieldID, fieldName);
-    //jfieldID qtObjectFieldID = m_env->FromReflectedField(fieldReflectedObject);
-    //env->SetIntField(QtConnectivityJni::javaRunnableObject, qtObjectFieldID, reinterpret_cast<int>(this));
-
-
-    QtConnectivityJni::javaRunnableClass = m_env->GetObjectClass(QtConnectivityJni::javaRunnableObject);
-    m_env->RegisterNatives(QtConnectivityJni::javaRunnableClass, methods, 1);
-    loadDefaultAdapter();
-    // QtConnectivityJni::env->FindClass() doesn't work on the loaded class so we use reflection API instead and return Class<JNIBroadcastReceiver> object.
-    return jniRunnableClassObject;
-}
-*/
-QBluetoothSocketPrivate::QBluetoothSocketPrivate():
-    socketObject(0),
-    remoteDeviceObject(0),
-    inputStream(0),
-    outputStream(0)
+QBluetoothSocketPrivate::QBluetoothSocketPrivate()
+  : socket(-1),
+    socketType(QBluetoothServiceInfo::UnknownProtocol),
+    state(QBluetoothSocket::UnconnectedState),
+    socketError(QBluetoothSocket::NoSocketError),
+    connecting(false),
+    discoveryAgent(0),
+    inputThread(0)
 {
-    btAdapterClass = QBluetoothLocalDevicePrivate::btAdapterClass;
-    btAdapterObject = QBluetoothLocalDevicePrivate::btAdapterObject;
-
-    //W/Qt      ( 1111): QObject::connect: Cannot queue arguments of type 'QBluetoothSocket::SocketError'
-    //W/Qt      ( 1111): (Make sure 'QBluetoothSocket::SocketError' is registered using qRegisterMetaType().)
+    adapter = QAndroidJniObject::callStaticObjectMethod("android/bluetooth/BluetoothAdapter",
+                                                        "getDefaultAdapter",
+                                                        "()Landroid/bluetooth/BluetoothAdapter;");
     qRegisterMetaType<QBluetoothSocket::SocketError>("QBluetoothSocket::SocketError");
+    qRegisterMetaType<QBluetoothSocket::SocketState>("QBluetoothSocket::SocketState");
 }
 
 QBluetoothSocketPrivate::~QBluetoothSocketPrivate()
 {
-    JNIThreadHelper env;
-    if (remoteDeviceObject != 0)
-        env->DeleteGlobalRef(remoteDeviceObject);
-
-    if (socketObject != 0)
-        env->DeleteGlobalRef(socketObject);
-
-    if (inputStream != 0)
-        env->DeleteGlobalRef(inputStream);
-
-    if (outputStream != 0)
-        env->DeleteGlobalRef(outputStream);
 }
 
 bool QBluetoothSocketPrivate::ensureNativeSocket(QBluetoothServiceInfo::Protocol type)
 {
-    Q_UNUSED(type);
+    socketType = type;
+    if (socketType == QBluetoothServiceInfo::RfcommProtocol)
+        return true;
+
     return false;
 }
 
-void QBluetoothSocketPrivate::connectToService(const QBluetoothAddress &address, quint16 port, QIODevice::OpenMode openMode)
+//TODO Convert uuid parameter to const reference (affects QNX too)
+void QBluetoothSocketPrivate::connectToService(const QBluetoothAddress &address, QBluetoothUuid uuid, QIODevice::OpenMode openMode)
 {
-    QtConcurrent::run(this, &QBluetoothSocketPrivate::connectToServiceConc, address, port, openMode);
-}
-
-void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &address, quint16 port, QIODevice::OpenMode openMode)
-{
-    Q_UNUSED(openMode);
-    //Q_UNUSED(address);
-    Q_UNUSED(port);
     Q_Q(QBluetoothSocket);
 
-    JNIThreadHelper env;
+    q->setSocketState(QBluetoothSocket::ConnectingState);
+    QtConcurrent::run(this, &QBluetoothSocketPrivate::connectToServiceConc, address, uuid, openMode);
+}
 
-    jmethodID getRemoteDeviceID = env->GetMethodID(btAdapterClass, "getRemoteDevice", "(Ljava/lang/String;)Landroid/bluetooth/BluetoothDevice;");
+void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &address,
+                                                   const QBluetoothUuid &uuid, QIODevice::OpenMode openMode)
+{
+    Q_Q(QBluetoothSocket);
+    Q_UNUSED(openMode);
 
-    jstring jni_address = env->NewStringUTF(address.toString().toUtf8());
-
-    remoteDeviceObject = env->CallObjectMethod(btAdapterObject, getRemoteDeviceID, jni_address);
-    remoteDeviceObject = (jobject)env->NewGlobalRef(remoteDeviceObject);
-
-    jclass bluetoothDeviceClass = env->FindClass("android/bluetooth/BluetoothDevice");
-
-    jmethodID  createSocketID = env->GetMethodID(bluetoothDeviceClass,"createRfcommSocketToServiceRecord","(Ljava/util/UUID;)Landroid/bluetooth/BluetoothSocket;");
-
-    jclass uuidClass = env->FindClass("java/util/UUID");
-    jmethodID fromStringID = env->GetStaticMethodID(uuidClass, "fromString", "(Ljava/lang/String;)Ljava/util/UUID;");
-
-    jstring uuid = env->NewStringUTF("00001101-0000-1000-8000-00805F9B34FB");
-    jobject uuidObject = env->CallStaticObjectMethod(uuidClass, fromStringID, uuid);
-
-    socketObject = env->CallObjectMethod(remoteDeviceObject, createSocketID, uuidObject);
-    socketObject = (jobject)env->NewGlobalRef(socketObject);
-
-    emit q->stateChanged(QBluetoothSocket::ConnectingState);
-
-    jclass socketClass = env->FindClass("android/bluetooth/BluetoothSocket");
-    jmethodID connectID = env->GetMethodID(socketClass, "connect", "()V");
-
-    env->CallVoidMethod(socketObject, connectID);
-
-    if (!env->ExceptionCheck()) {
-        jmethodID getInputStreamID = env->GetMethodID(socketClass, "getInputStream", "()Ljava/io/InputStream;");
-        jmethodID getOutputStreamID = env->GetMethodID(socketClass, "getOutputStream", "()Ljava/io/OutputStream;");
-
-        inputStream = env->CallObjectMethod(socketObject, getInputStreamID);
-        outputStream = env->CallObjectMethod(socketObject, getOutputStreamID);
-        inputStream = (jobject)env->NewGlobalRef(inputStream);
-        outputStream = (jobject)env->NewGlobalRef(outputStream);
-
-
-        q->setSocketState(QBluetoothSocket::ConnectedState);
-        inputThread = new InputStreamThread(this);
-        inputThread->start();
-
-        emit q->connected();
-    } else {
-        socketError = QBluetoothSocket::UnknownSocketError;
-        emit q->error(socketError);
-        env->ExceptionClear();
+    if (!adapter.isValid()) {
+        qCWarning(QT_BT_ANDROID) << "Device does not support Bluetooth";
+        errorString = QBluetoothSocket::tr("Device does not support Bluetooth");
+        q->setSocketError(QBluetoothSocket::NetworkError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return;
     }
+
+    const int state = adapter.callMethod<jint>("getState");
+    if (state != 12 ) { //BluetoothAdapter.STATE_ON
+        qCWarning(QT_BT_ANDROID) << "Bt device offline";
+        errorString = QBluetoothSocket::tr("Device is powered off.");
+        q->setSocketError(QBluetoothSocket::NetworkError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return;
+    }
+
+    QAndroidJniEnvironment env;
+    QAndroidJniObject inputString = QAndroidJniObject::fromString(address.toString());
+    remoteDevice = adapter.callObjectMethod("getRemoteDevice",
+                                            "(Ljava/lang/String;)Landroid/bluetooth/BluetoothDevice;",
+                                            inputString.object<jstring>());
+    if (env->ExceptionCheck()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+
+        errorString = QBluetoothSocket::tr("Cannot access address %1").arg(address.toString());
+        q->setSocketError(QBluetoothSocket::HostNotFoundError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return;
+    }
+
+    //cut leading { and trailing } {xxx-xxx}
+    QString tempUuid = uuid.toString();
+    tempUuid.chop(1); //remove trailing '}'
+    tempUuid.remove(0, 1); //remove first '{'
+
+    inputString = QAndroidJniObject::fromString(tempUuid);
+    QAndroidJniObject uuidObject = QAndroidJniObject::callStaticObjectMethod("java/util/UUID", "fromString",
+                                                                       "(Ljava/lang/String;)Ljava/util/UUID;",
+                                                                       inputString.object<jstring>());
+    socketObject = remoteDevice.callObjectMethod("createRfcommSocketToServiceRecord",
+                                                 "(Ljava/util/UUID;)Landroid/bluetooth/BluetoothSocket;",
+                                                 uuidObject.object<jobject>());
+    if (env->ExceptionCheck()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+
+        socketObject = remoteDevice = QAndroidJniObject();
+        errorString = QBluetoothSocket::tr("Cannot connect to %1 on %2",
+                                           "%1 = uuid, %2 = Bt address").arg(uuid.toString()).arg(address.toString());
+        q->setSocketError(QBluetoothSocket::ServiceNotFoundError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return;
+    }
+
+    socketObject.callMethod<void>("connect");
+    if (env->ExceptionCheck() || socketObject.callMethod<jboolean>("isConnected") == JNI_FALSE) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+
+        socketObject = remoteDevice = QAndroidJniObject();
+        errorString = QBluetoothSocket::tr("Connection to service failed");
+        q->setSocketError(QBluetoothSocket::ServiceNotFoundError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return;
+    }
+
+    inputStream = socketObject.callObjectMethod("getInputStream", "()Ljava/io/InputStream;");
+    outputStream = socketObject.callObjectMethod("getOutputStream", "()Ljava/io/OutputStream;");
+
+    if (env->ExceptionCheck() || !inputStream.isValid() || !outputStream.isValid()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+
+        //close socket again
+        socketObject.callMethod<void>("close");
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+
+        socketObject = inputStream = outputStream = remoteDevice = QAndroidJniObject();
+
+
+        errorString = QBluetoothSocket::tr("Obtaining streams for service failed");
+        q->setSocketError(QBluetoothSocket::NetworkError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return;
+    }
+
+    if (inputThread) {
+        inputThread->stop();
+        inputThread->wait();
+        delete inputThread;
+    }
+    inputThread = new InputStreamThread(this);
+    QObject::connect(inputThread, SIGNAL(dataAvailable()), q, SIGNAL(readyRead()), Qt::QueuedConnection);
+    QObject::connect(inputThread, SIGNAL(error()),
+                     this, SLOT(inputThreadError()), Qt::QueuedConnection);
+    inputThread->start();
+
+    q->setSocketState(QBluetoothSocket::ConnectedState);
+    emit q->connected();
 }
 
 void QBluetoothSocketPrivate::_q_writeNotify()
@@ -205,70 +213,73 @@ void QBluetoothSocketPrivate::_q_readNotify()
 
 void QBluetoothSocketPrivate::abort()
 {
-    if (socketObject != 0) {
-        JNIThreadHelper env;
+    if (state == QBluetoothSocket::UnconnectedState)
+        return;
 
-        jclass socketClass = env->FindClass("android/bluetooth/BluetoothSocket");
-        jmethodID closeID = env->GetMethodID(socketClass, "close", "()V");
-        env->CallVoidMethod(socketObject, closeID);
+    if (socketObject.isValid()) {
+        QAndroidJniEnvironment env;
+
+        if (inputThread) {
+            inputThread->stop();
+            inputThread->wait();
+            delete inputThread;
+            inputThread = 0;
+        }
+
+        socketObject.callMethod<void>("close");
+        if (env->ExceptionCheck()) {
+            qCWarning(QT_BT_ANDROID) << "Error during closure of socket";
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+
+        inputStream = outputStream = socketObject = remoteDevice = QAndroidJniObject();
+
+        Q_Q(QBluetoothSocket);
+        emit q->disconnected();
     }
 }
 
 QString QBluetoothSocketPrivate::localName() const
 {
-    QBluetoothLocalDevice device;
-    return device.name();
+    if (adapter.isValid())
+        return adapter.callObjectMethod<jstring>("getName").toString();
+
+    return QString();
 }
 
 QBluetoothAddress QBluetoothSocketPrivate::localAddress() const
 {
-    QBluetoothLocalDevice device;
-    return device.address();
+    QString result;
+    if (adapter.isValid())
+        result = adapter.callObjectMethod("getAddress", "()Ljava/lang/String;").toString();
+
+    return QBluetoothAddress(result);
 }
 
 quint16 QBluetoothSocketPrivate::localPort() const
 {
-    // Impossible to get channel number with current Android API (Levels 5 to 13)
+    // Impossible to get channel number with current Android API (Levels 5 to 19)
     return 0;
 }
 
 QString QBluetoothSocketPrivate::peerName() const
 {
-    if (remoteDeviceObject != 0) {
-        JNIThreadHelper env;
-
-        /*static*/ jclass bluetoothDeviceClass = env->FindClass("android/bluetooth/BluetoothDevice");
-        /*static*/ jmethodID getNameID = env->GetMethodID(bluetoothDeviceClass, "getName", "()Ljava/lang/String;");
-        jstring peerName = (jstring) env->CallObjectMethod(remoteDeviceObject, getNameID);
-
-        jboolean isCopy;
-        const jchar* name = env->GetStringChars(peerName, &isCopy);
-        QString qtName = QString::fromUtf16(name, env->GetStringLength(peerName));
-        env->ReleaseStringChars(peerName, name);
-        return qtName;
-    } else {
+    if (!remoteDevice.isValid())
         return QString();
-    }
+
+    return remoteDevice.callObjectMethod("getName", "()Ljava/lang/String;").toString();
 }
 
 QBluetoothAddress QBluetoothSocketPrivate::peerAddress() const
 {
-    if (remoteDeviceObject != 0) {
-        JNIThreadHelper env;
-
-        /*static*/ jclass bluetoothDeviceClass = env->FindClass("android/bluetooth/BluetoothDevice");
-        /*static*/ jmethodID getNameID = env->GetMethodID(bluetoothDeviceClass, "getAddress", "()Ljava/lang/String;");
-        jstring peerName = (jstring) env->CallObjectMethod(remoteDeviceObject, getNameID);
-
-        jboolean isCopy;
-        const jchar* addressStr = env->GetStringChars(peerName, &isCopy);
-        QString strAddress = QString::fromUtf16(addressStr, env->GetStringLength(peerName));
-        QBluetoothAddress address(strAddress);
-        env->ReleaseStringChars(peerName, addressStr);
-        return address;
-    } else {
+    if (!remoteDevice.isValid())
         return QBluetoothAddress();
-    }
+
+    const QString address = remoteDevice.callObjectMethod("getAddress",
+                                                          "()Ljava/lang/String;").toString();
+
+    return QBluetoothAddress(address);
 }
 
 quint16 QBluetoothSocketPrivate::peerPort() const
@@ -279,61 +290,54 @@ quint16 QBluetoothSocketPrivate::peerPort() const
 
 qint64 QBluetoothSocketPrivate::writeData(const char *data, qint64 maxSize)
 {
-    if (state != QBluetoothSocket::ConnectedState) return 0;
+    //TODO implement buffered behavior (so far only unbuffered)
+    //TODO check that readData and writeData return -1 on error (on all platforms)
+    Q_Q(QBluetoothSocket);
+    if (state != QBluetoothSocket::ConnectedState || !outputStream.isValid()) {
+        qCWarning(QT_BT_ANDROID) << "Socket::writeData: " << (int)state << outputStream.isValid() ;
+        errorString = QBluetoothSocket::tr("Cannot write while not connected");
+        q->setSocketError(QBluetoothSocket::OperationError);
+        return -1;
+    }
 
-    JNIThreadHelper env;
+    QAndroidJniEnvironment env;
+    jbyteArray nativeData = env->NewByteArray((qint32)maxSize);
+    env->SetByteArrayRegion(nativeData, 0, (qint32)maxSize, reinterpret_cast<const jbyte*>(data));
+    outputStream.callMethod<void>("write", "([BII)V", nativeData, 0, (qint32)maxSize);
+    env->DeleteLocalRef(nativeData);
 
-    qint32 maxSizeInt = maxSize;
-    /*static*/ jclass outputStreamClass = env->FindClass("java/io/OutputStream");
-    /*static*/ jmethodID writeDataID = env->GetMethodID(outputStreamClass, "write", "([BII)V");
-
-    jbyteArray dataArray = env->NewByteArray(maxSizeInt);
-    env->SetByteArrayRegion(dataArray, 0, maxSizeInt, reinterpret_cast<const jbyte*>(data));
-    env->CallVoidMethod(outputStream, writeDataID, dataArray, 0, maxSizeInt);
-
-    if (env->ExceptionCheck() == JNI_TRUE)
+    if (env->ExceptionCheck()) {
+        qCWarning(QT_BT_ANDROID) << "Error while writing";
+        env->ExceptionDescribe();
         env->ExceptionClear();
+        errorString = QBluetoothSocket::tr("Error during write on socket.");
+        q->setSocketError(QBluetoothSocket::NetworkError);
+        return -1;
+    }
 
-    return maxSizeInt;
+    return maxSize;
 }
 
 qint64 QBluetoothSocketPrivate::readData(char *data, qint64 maxSize)
 {
-    if (!buffer.isEmpty()) {
-        int i = buffer.read(data, maxSize);
-        return i;
+    Q_Q(QBluetoothSocket);
+    if (state != QBluetoothSocket::ConnectedState || !inputThread) {
+        qCWarning(QT_BT_ANDROID) << "Socket::writeData: " << (int)state << outputStream.isValid() ;
+        errorString = QBluetoothSocket::tr("Cannot write while not connected");
+        q->setSocketError(QBluetoothSocket::OperationError);
+        return -1;
     }
-    return 0;
+
+    return inputThread->readData(data, maxSize);
 }
 
-qint32 QBluetoothSocketPrivate::read()
+void QBluetoothSocketPrivate::inputThreadError()
 {
     Q_Q(QBluetoothSocket);
-    JNIThreadHelper env;
 
-    /*static*/ jclass inputStreamClass = env->FindClass("java/io/InputStream");
-    /*static*/ jmethodID readID = env->GetMethodID(inputStreamClass, "read", "([BII)I");
-    int bufLen = 1000; // Seems to magical number that also low-end products can survive.
-    jint ret=0;
-    jbyteArray dataArray = env->NewByteArray(bufLen);
-    ret = env->CallIntMethod(inputStream, readID, dataArray, 0, bufLen);
-    if (ret > 0 && env->ExceptionCheck() == JNI_FALSE) {
-        char *writePointer = buffer.reserve(bufLen);
-        env->GetByteArrayRegion(dataArray, 0, ret, reinterpret_cast<jbyte*>(writePointer));
-        env->DeleteLocalRef(dataArray);
-        buffer.chop(bufLen - (ret < 0 ? 0 : ret));
-        emit q->readyRead();
-    } else if (ret < 0 || env->ExceptionCheck() == JNI_TRUE) {
-        emit q->error(QBluetoothSocket::UnknownSocketError);
-        q->disconnectFromService();
-        q->setSocketState(QBluetoothSocket::UnconnectedState);
-    } else {
-        qWarning() << "java/io/InputStream::read([BII)I returned zero bytes.";
-    }
-    if (env->ExceptionCheck() == JNI_TRUE)
-        env->ExceptionClear();
-
-    return ret;
+    //any error from InputThread is a NetworkError
+    errorString = QBluetoothSocket::tr("Network error during read");
+    q->setSocketError(QBluetoothSocket::NetworkError);
 }
 
 void QBluetoothSocketPrivate::close()
@@ -344,29 +348,6 @@ void QBluetoothSocketPrivate::close()
        */
     abort();
 }
-/*
-void QBluetoothSocketPrivate::jniCallback(){
-    //ATTACH_THREAD
-    qDebug() << "new QBluetoothSocketPrivate";
-    QtConnectivityJni::btAdapterClass = QtConnectivityJni::env->FindClass("android/bluetooth/BluetoothAdapter");
-    if (QtConnectivityJni::btAdapterClass == NULL)
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to find class android/bluetooth/BluetoothAdapter");
-
-    jmethodID getDefaultAdapterID = QtConnectivityJni::env->GetStaticMethodID(QtConnectivityJni::btAdapterClass, "getDefaultAdapter", "()Landroid/bluetooth/BluetoothAdapter;");
-    if (getDefaultAdapterID == NULL)
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Native registration unable to get method ID");
-
-    qDebug() << "Hakkame nyyd looma";
-    QtConnectivityJni::btAdapterObject = QtConnectivityJni::env->CallStaticObjectMethod(QtConnectivityJni::btAdapterClass, getDefaultAdapterID);
-    if (QtConnectivityJni::btAdapterObject == NULL)i {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "Device does not support Bluetooth");
-        //return JNI_FALSE;
-    } else {
-        __android_log_print(ANDROID_LOG_FATAL,"Qt", "BluetoothAdapter returned.");
-    }
-    QtConnectivityJni::btAdapterObject = QtConnectivityJni::env->NewGlobalRef(QtConnectivityJni::btAdapterObject);
-    //QtConnectivityJni::m_javaVM->DetachCurrentThread();
-}*/
 
 bool QBluetoothSocketPrivate::setSocketDescriptor(int socketDescriptor, QBluetoothServiceInfo::Protocol socketType,
                          QBluetoothSocket::SocketState socketState, QBluetoothSocket::OpenMode openMode)
@@ -375,6 +356,7 @@ bool QBluetoothSocketPrivate::setSocketDescriptor(int socketDescriptor, QBluetoo
     Q_UNUSED(socketType)
     Q_UNUSED(socketState);
     Q_UNUSED(openMode);
+    qCWarning(QT_BT_ANDROID) << "No socket descriptor support on Android.";
     return false;
 }
 
@@ -385,7 +367,11 @@ int QBluetoothSocketPrivate::socketDescriptor() const
 
 qint64 QBluetoothSocketPrivate::bytesAvailable() const
 {
-    return buffer.size();
+    //We cannot access buffer directly as it is part of different thread
+    if (inputThread)
+        return inputThread->bytesAvalable();
+
+    return 0;
 }
 
 QT_END_NAMESPACE

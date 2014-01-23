@@ -99,11 +99,10 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
         return;
     }
 
-    //TODO change to new error enum InvalidBluetoothAdapterError
     if (!m_adapterAddress.isNull() &&
             adapter.callObjectMethod<jstring>("getAddress").toString() != m_adapterAddress.toString()) {
         qCWarning(QT_BT_ANDROID) << "Incorrect local adapter passed.";
-        lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
+        lastError = QBluetoothDeviceDiscoveryAgent::InvalidBluetoothAdapterError;
         errorString = QBluetoothDeviceDiscoveryAgent::tr("Passed address is not a local device.");
         emit q->error(lastError);
         return;

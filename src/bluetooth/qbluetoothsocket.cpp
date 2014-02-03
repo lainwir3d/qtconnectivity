@@ -560,7 +560,7 @@ void QBluetoothSocket::discoveryFinished()
     qCDebug(QT_BT) << "Socket discovery finished";
     Q_D(QBluetoothSocket);
     if (d->discoveryAgent){
-        qCDebug(QT_BT) << "Didn't find any";
+        qCDebug(QT_BT) << "Didn't find any matching service";
         emit error(QBluetoothSocket::ServiceNotFoundError);
         d->discoveryAgent->deleteLater();
         d->discoveryAgent = 0;

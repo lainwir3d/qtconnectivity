@@ -65,8 +65,14 @@ void InputStreamThread::run()
         readFromInputStream();
     }
 
+    QAndroidJniEnvironment env;
     if (m_socket_p->inputStream.isValid())
         m_socket_p->inputStream.callMethod<void>("close");
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+    }
 }
 
 bool InputStreamThread::hasError() const
@@ -94,13 +100,14 @@ void InputStreamThread::readFromInputStream()
 
     int bufLen = 1000; // Seems to magical number that also low-end products can survive.
     jbyteArray nativeArray = env->NewByteArray(bufLen);
-    qDebug() << "wwwwww";
+
     jint ret = m_socket_p->inputStream.callMethod<jint>("read", "([BII)I", nativeArray, 0, bufLen);
 
-    qDebug() << "ddddd" << ret;
     if (env->ExceptionCheck() || ret < 0) {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
         env->DeleteLocalRef(nativeArray);
         isError = true;
         QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection);

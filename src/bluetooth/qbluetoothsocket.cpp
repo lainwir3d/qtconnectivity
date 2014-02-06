@@ -291,6 +291,9 @@ qint64 QBluetoothSocket::bytesToWrite() const
 
     At any point, the socket can emit error() to signal that an error occurred.
 
+    Note that most platforms require a pairing prior to connecting to the remote device. Otherwise
+    the connection process may fail.
+
     \sa state(), disconnectFromService()
 */
 void QBluetoothSocket::connectToService(const QBluetoothServiceInfo &service, OpenMode openMode)
@@ -358,6 +361,9 @@ void QBluetoothSocket::connectToService(const QBluetoothServiceInfo &service, Op
 
     At any point, the socket can emit error() to signal that an error occurred.
 
+    Note that most platforms require a pairing prior to connecting to the remote device. Otherwise
+    the connection process may fail.
+
     \sa state(), disconnectFromService()
 */
 void QBluetoothSocket::connectToService(const QBluetoothAddress &address, const QBluetoothUuid &uuid, OpenMode openMode)
@@ -400,6 +406,9 @@ void QBluetoothSocket::connectToService(const QBluetoothAddress &address, const 
     On BlackBerry and Android, a connection to a service can not be established using a port. Calling this function
     will emit a \l {QBluetoothSocket::ServiceNotFoundError}{ServiceNotFoundError}
 
+    Note that most platforms require a pairing prior to connecting to the remote device. Otherwise
+    the connection process may fail.
+
     \sa state(), disconnectFromService()
 */
 void QBluetoothSocket::connectToService(const QBluetoothAddress &address, quint16 port, OpenMode openMode)
@@ -429,7 +438,7 @@ void QBluetoothSocket::connectToService(const QBluetoothAddress &address, quint1
     Returns the socket type. The socket automatically adjusts to the protocol
     offered by the remote service.
 
-    Blackberry and Android only support \l{QBluetoothService::RfcommProtocol}{RFCOMM}
+    Blackberry and Android only support \l{QBluetoothServiceInfo::RfcommProtocol}{RFCOMM}
     based sockets.
 */
 QBluetoothServiceInfo::Protocol QBluetoothSocket::socketType() const

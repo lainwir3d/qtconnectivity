@@ -90,7 +90,8 @@ QT_BEGIN_NAMESPACE
 /*!
     \fn void QBluetoothServer::close()
 
-    Closes and resets the listening socket.
+    Closes and resets the listening socket. Any already established \l QBluetoothSocket
+    continues to operate and must separately \l {QBluetoothSocket::close(){closed}.
 */
 
 /*!
@@ -110,7 +111,10 @@ QT_BEGIN_NAMESPACE
 /*!
     \fn bool QBluetoothServer::listen(const QBluetoothAddress &address, quint16 port)
 
-    Start listening for incoming connections to \a address on \a port.
+    Start listening for incoming connections to \a address on \a port. \a address
+    must be a local Bluetooth adapter address and \a port must be larger than zero
+    and not be taken already by another Bluetooth server object. It is recommended
+    to avoid setting a port number to enable the system to automatically der
 
     Returns true if the operation succeeded and the server is listening for
     incoming connections, otherwise returns false.
@@ -199,9 +203,12 @@ QBluetoothServiceInfo QBluetoothServer::listen(const QBluetoothUuid &uuid, const
 
     QBluetoothServiceInfo::Sequence classId;
     classId << QVariant::fromValue(QBluetoothUuid(QBluetoothUuid::SerialPort));
-    serviceInfo.setAttribute(QBluetoothServiceInfo::ServiceClassIds, classId);
     serviceInfo.setAttribute(QBluetoothServiceInfo::BluetoothProfileDescriptorList,
                              classId);
+
+    //Android requires custom uuid to be set as service class and not as service uuid
+    classId.prepend(QVariant::fromValue(uuid));
+    serviceInfo.setAttribute(QBluetoothServiceInfo::ServiceClassIds, classId);
 
     serviceInfo.setServiceUuid(uuid);
 
@@ -238,6 +245,8 @@ bool QBluetoothServer::isListening() const
 #ifdef QT_QNX_BLUETOOTH
     if (!d->socket)
         return false;
+#elif defined(QT_ANDROID_BLUETOOTH)
+    return d->isListening();
 #endif
 
     return d->socket->state() == QBluetoothSocket::ListeningState;

@@ -139,8 +139,10 @@ void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &addr
                                                                        "(Ljava/lang/String;)Ljava/util/UUID;",
                                                                        inputString.object<jstring>());
     socketObject = remoteDevice.callObjectMethod("createRfcommSocketToServiceRecord",
+    //socketObject = remoteDevice.callObjectMethod("createInsecureRfcommSocketToServiceRecord",
                                                  "(Ljava/util/UUID;)Landroid/bluetooth/BluetoothSocket;",
                                                  uuidObject.object<jobject>());
+
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
         env->ExceptionClear();
@@ -155,8 +157,10 @@ void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &addr
 
     socketObject.callMethod<void>("connect");
     if (env->ExceptionCheck() || socketObject.callMethod<jboolean>("isConnected") == JNI_FALSE) {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
 
         socketObject = remoteDevice = QAndroidJniObject();
         errorString = QBluetoothSocket::tr("Connection to service failed");

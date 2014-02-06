@@ -421,9 +421,10 @@ void QBluetoothServiceDiscoveryAgentPrivate::populateDiscoveredServices(const QB
             //set SPP service class uuid
             QBluetoothServiceInfo::Sequence classId;
             classId << QVariant::fromValue(QBluetoothUuid(QBluetoothUuid::SerialPort));
-            serviceInfo.setAttribute(QBluetoothServiceInfo::ServiceClassIds, classId);
             serviceInfo.setAttribute(QBluetoothServiceInfo::BluetoothProfileDescriptorList,
                                      classId);
+            classId.prepend(QVariant::fromValue(uuids.at(i)));
+            serviceInfo.setAttribute(QBluetoothServiceInfo::ServiceClassIds, classId);
 
             serviceInfo.setServiceName(QBluetoothServiceDiscoveryAgent::tr("Serial Port Profile"));
 

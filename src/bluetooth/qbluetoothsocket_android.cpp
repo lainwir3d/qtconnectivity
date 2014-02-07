@@ -97,6 +97,7 @@ void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &addr
     Q_Q(QBluetoothSocket);
     Q_UNUSED(openMode);
 
+    qDebug() << "GGGGConnecting to" << address.toString() << uuid.toString();
     if (!adapter.isValid()) {
         qCWarning(QT_BT_ANDROID) << "Device does not support Bluetooth";
         errorString = QBluetoothSocket::tr("Device does not support Bluetooth");
@@ -138,6 +139,7 @@ void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &addr
     QAndroidJniObject uuidObject = QAndroidJniObject::callStaticObjectMethod("java/util/UUID", "fromString",
                                                                        "(Ljava/lang/String;)Ljava/util/UUID;",
                                                                        inputString.object<jstring>());
+
     socketObject = remoteDevice.callObjectMethod("createRfcommSocketToServiceRecord",
     //socketObject = remoteDevice.callObjectMethod("createInsecureRfcommSocketToServiceRecord",
                                                  "(Ljava/util/UUID;)Landroid/bluetooth/BluetoothSocket;",
@@ -169,6 +171,13 @@ void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &addr
         return;
     }
 
+    if (inputThread) {
+        inputThread->stop();
+        inputThread->wait();
+        delete inputThread;
+        inputThread = 0;
+    }
+
     inputStream = socketObject.callObjectMethod("getInputStream", "()Ljava/io/InputStream;");
     outputStream = socketObject.callObjectMethod("getOutputStream", "()Ljava/io/OutputStream;");
 
@@ -192,11 +201,6 @@ void QBluetoothSocketPrivate::connectToServiceConc(const QBluetoothAddress &addr
         return;
     }
 
-    if (inputThread) {
-        inputThread->stop();
-        inputThread->wait();
-        delete inputThread;
-    }
     inputThread = new InputStreamThread(this);
     QObject::connect(inputThread, SIGNAL(dataAvailable()), q, SIGNAL(readyRead()), Qt::QueuedConnection);
     QObject::connect(inputThread, SIGNAL(error()),
@@ -223,6 +227,22 @@ void QBluetoothSocketPrivate::abort()
     if (socketObject.isValid()) {
         QAndroidJniEnvironment env;
 
+        /*
+         * BluetoothSocket.close() triggers an abort of the input stream
+         * thread because inputStream.read() throws IOException
+         * In turn the thread stops and throws an error which sets
+         * new state, error and emits relevant signals.
+         * See QBluetoothSocketPrivate::inputThreadError() for details
+         */
+        //triggers abort of input thread as well
+        socketObject.callMethod<void>("close");
+        if (env->ExceptionCheck()) {
+
+            qCWarning(QT_BT_ANDROID) << "Error during closure of socket";
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+
         if (inputThread) {
             inputThread->stop();
             inputThread->wait();
@@ -230,17 +250,7 @@ void QBluetoothSocketPrivate::abort()
             inputThread = 0;
         }
 
-        socketObject.callMethod<void>("close");
-        if (env->ExceptionCheck()) {
-            qCWarning(QT_BT_ANDROID) << "Error during closure of socket";
-            env->ExceptionDescribe();
-            env->ExceptionClear();
-        }
-
         inputStream = outputStream = socketObject = remoteDevice = QAndroidJniObject();
-
-        Q_Q(QBluetoothSocket);
-        emit q->disconnected();
     }
 }
 
@@ -342,6 +352,8 @@ void QBluetoothSocketPrivate::inputThreadError()
     //any error from InputThread is a NetworkError
     errorString = QBluetoothSocket::tr("Network error during read");
     q->setSocketError(QBluetoothSocket::NetworkError);
+    q->setSocketState(QBluetoothSocket::UnconnectedState);
+    emit q->disconnected();
 }
 
 void QBluetoothSocketPrivate::close()
@@ -349,7 +361,7 @@ void QBluetoothSocketPrivate::close()
     /* This function is called by QBluetoothSocket::close and softer version
        QBluetoothSocket::disconnectFromService() which difference I do not quite fully understand.
        Anyways we end up in Android "close" function call.
-       */
+     */
     abort();
 }
 
@@ -362,6 +374,65 @@ bool QBluetoothSocketPrivate::setSocketDescriptor(int socketDescriptor, QBluetoo
     Q_UNUSED(openMode);
     qCWarning(QT_BT_ANDROID) << "No socket descriptor support on Android.";
     return false;
+}
+
+bool QBluetoothSocketPrivate::setSocketDescriptor(const QAndroidJniObject &socket, QBluetoothServiceInfo::Protocol socketType_,
+                         QBluetoothSocket::SocketState socketState, QBluetoothSocket::OpenMode openMode)
+{
+    Q_Q(QBluetoothSocket);
+
+    if (q->state() != QBluetoothSocket::UnconnectedState || !socket.isValid())
+        return false;
+
+    if (!ensureNativeSocket(socketType_))
+        return false;
+
+    socketObject = socket;
+
+    QAndroidJniEnvironment env;
+    inputStream = socketObject.callObjectMethod("getInputStream", "()Ljava/io/InputStream;");
+    outputStream = socketObject.callObjectMethod("getOutputStream", "()Ljava/io/OutputStream;");
+
+    if (env->ExceptionCheck() || !inputStream.isValid() || !outputStream.isValid()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+
+        //close socket again
+        socketObject.callMethod<void>("close");
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+
+        socketObject = inputStream = outputStream = remoteDevice = QAndroidJniObject();
+
+
+        errorString = QBluetoothSocket::tr("Obtaining streams for service failed");
+        q->setSocketError(QBluetoothSocket::NetworkError);
+        q->setSocketState(QBluetoothSocket::UnconnectedState);
+        return false;
+    }
+
+    if (inputThread) {
+        inputThread->stop();
+        inputThread->wait();
+        delete inputThread;
+        inputThread = 0;
+    }
+    inputThread = new InputStreamThread(this);
+    QObject::connect(inputThread, SIGNAL(dataAvailable()), q, SIGNAL(readyRead()), Qt::QueuedConnection);
+    QObject::connect(inputThread, SIGNAL(error()),
+                     this, SLOT(inputThreadError()), Qt::QueuedConnection);
+    inputThread->start();
+
+
+    q->setSocketState(socketState);
+    q->setOpenMode(openMode);
+
+    if (openMode == QBluetoothSocket::ConnectedState)
+        emit q->connected();
+
+    return true;
 }
 
 int QBluetoothSocketPrivate::socketDescriptor() const

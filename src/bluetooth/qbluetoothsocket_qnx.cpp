@@ -253,7 +253,7 @@ void QBluetoothSocketPrivate::close()
     abort();
 }
 
-bool QBluetoothSocketPrivate::setSocketDescriptor(int socketDescriptor, QBluetoothServiceInfo::Protocol socketType,
+bool QBluetoothSocketPrivate::setSocketDescriptor(int socketDescriptor, QBluetoothServiceInfo::Protocol socketType_,
                                                   QBluetoothSocket::SocketState socketState, QBluetoothSocket::OpenMode openMode)
 {
     Q_Q(QBluetoothSocket);
@@ -263,7 +263,7 @@ bool QBluetoothSocketPrivate::setSocketDescriptor(int socketDescriptor, QBluetoo
     connectWriteNotifier = 0;
 
     socket = socketDescriptor;
-    socketType = socketType;
+    socketType = socketType_;
 
     // ensure that O_NONBLOCK is set on new connections.
     int flags = fcntl(socket, F_GETFL, 0);

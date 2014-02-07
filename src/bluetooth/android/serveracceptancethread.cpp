@@ -152,16 +152,10 @@ void ServerAcceptanceThread::run()
 
 void ServerAcceptanceThread::stop()
 {
-    qDebug() << "%%%%%%%%aaaa1";
     QMutexLocker lock(&m_mutex);
-    qDebug() << "%%%%%%%%aaaa2";
     m_stop = true;
-    qDebug() << "%%%%%%%%aaaa3";
-    if (btServerSocket.isValid()) {
-        qDebug() << "%%%%%%%%aaaa4";
+    if (btServerSocket.isValid())
         btServerSocket.callMethod<void>("close");
-    }
-    qDebug() << "%%%%%%%%aaaa5";
 }
 
 bool ServerAcceptanceThread::hasPendingConnections() const

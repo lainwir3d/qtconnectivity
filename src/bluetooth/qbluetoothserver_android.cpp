@@ -59,23 +59,21 @@ QBluetoothServerPrivate::QBluetoothServerPrivate(QBluetoothServiceInfo::Protocol
     : socket(0),maxPendingConnections(1), securityFlags(QBluetooth::NoSecurity), serverType(sType),
       m_lastError(QBluetoothServer::NoError)
 {
-    thread = new ServerAcceptanceThread();
+        thread = new ServerAcceptanceThread();
 }
 
 QBluetoothServerPrivate::~QBluetoothServerPrivate()
 {
     Q_Q(QBluetoothServer);
-    qWarning() << "FFFQQQQQQQQQQQQ2222";
     if (isListening())
         q->close();
-    qWarning() << "FFFQQQQQQQQQQQQ3333";
 
     __fakeServerPorts.remove(this);
 
-    qWarning() << "FFFQQQQQQQQQQQQ";
-    if (thread->isRunning())
+    if (thread->isRunning()) {
         thread->stop();
-    qWarning() << "FFFQQQQQQQQQQQQ11111";
+        thread->wait();
+    }
     thread->deleteLater();
     thread = 0;
 }
@@ -121,27 +119,13 @@ bool QBluetoothServerPrivate::isListening() const
 void QBluetoothServer::close()
 {
     Q_D(QBluetoothServer);
-    qDebug() << "%%%%%%%%1";
+
     d->thread->stop();
-    qDebug() << "%%%%%%%%2";
     d->thread->wait();
-    qDebug() << "%%%%%%%%3";
 
+    if (d->thread)
+        d->thread->disconnect();
     __fakeServerPorts.remove(d);
-
-    qDebug() << "%%%%%%%%4";
-
-//    if (!d->socket) {
-//        d->m_lastError = UnknownError;
-//        emit error(d->m_lastError);
-//        return;
-//    }
-//    d->socket->close();
-//    delete d->socket;
-//    d->socket = 0;
-//    ppsSendControlMessage("deregister_server", 0x1101, d->m_uuid, QString(), QString(), 0);
-//    // force active object (socket) to run and shutdown socket.
-//    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
 }
 
 bool QBluetoothServer::listen(const QBluetoothAddress &localAdapter, quint16 port)
@@ -208,6 +192,7 @@ bool QBluetoothServer::listen(const QBluetoothAddress &localAdapter, quint16 por
 
     if (__fakeServerPorts.key(port) == 0) {
         __fakeServerPorts[d] = port;
+
         qCDebug(QT_BT_ANDROID) << "Port" << port << "registered";
     } else {
         qCWarning(QT_BT_ANDROID) << "server with port" << port << "already registered or port invalid";
@@ -216,6 +201,7 @@ bool QBluetoothServer::listen(const QBluetoothAddress &localAdapter, quint16 por
         return false;
     }
 
+    connect(d->thread, SIGNAL(newConnection()), this, SIGNAL(newConnection()));
     return true;
 }
 
@@ -255,13 +241,21 @@ bool QBluetoothServer::hasPendingConnections() const
 
 QBluetoothSocket *QBluetoothServer::nextPendingConnection()
 {
-    //TODO
-    return 0;
-//    Q_D(QBluetoothServer);
-//    if (d->activeSockets.isEmpty())
-//        return 0;
+    Q_D(const QBluetoothServer);
 
-//    return d->activeSockets.takeFirst();
+    QAndroidJniObject socket = d->thread->nextPendingConnection();
+    if (!socket.isValid())
+        return 0;
+
+
+    QBluetoothSocket *newSocket = new QBluetoothSocket();
+    bool success = newSocket->d_ptr->setSocketDescriptor(socket, d->serverType);
+    if (!success) {
+        delete newSocket;
+        newSocket = 0;
+    }
+
+    return newSocket;
 }
 
 void QBluetoothServer::setSecurityFlags(QBluetooth::SecurityFlags security)

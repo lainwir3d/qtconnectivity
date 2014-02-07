@@ -57,9 +57,7 @@ public:
     explicit InputStreamThread(QBluetoothSocketPrivate *socket_p);
     virtual void run();
 
-    bool hasError() const;
     bool bytesAvalable() const;
-
     void stop();
 
     qint64 readData(char *data, qint64 maxSize);
@@ -73,9 +71,6 @@ private:
     QBluetoothSocketPrivate *m_socket_p;
     mutable QMutex m_mutex;
     bool m_stop;
-    bool isError;
-
-
 };
 
 QT_END_NAMESPACE

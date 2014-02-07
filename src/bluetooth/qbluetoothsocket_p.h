@@ -123,6 +123,11 @@ public:
     qint64 writeData(const char *data, qint64 maxSize);
     qint64 readData(char *data, qint64 maxSize);
 
+#ifdef QT_ANDROID_BLUETOOTH
+    bool setSocketDescriptor(const QAndroidJniObject &socket, QBluetoothServiceInfo::Protocol socketType,
+                             QBluetoothSocket::SocketState socketState = QBluetoothSocket::ConnectedState,
+                             QBluetoothSocket::OpenMode openMode = QBluetoothSocket::ReadWrite);
+#endif
     bool setSocketDescriptor(int socketDescriptor, QBluetoothServiceInfo::Protocol socketType,
                              QBluetoothSocket::SocketState socketState = QBluetoothSocket::ConnectedState,
                              QBluetoothSocket::OpenMode openMode = QBluetoothSocket::ReadWrite);

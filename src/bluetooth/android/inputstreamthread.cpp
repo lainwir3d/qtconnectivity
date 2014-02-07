@@ -49,7 +49,7 @@ QT_BEGIN_NAMESPACE
 
 
 InputStreamThread::InputStreamThread(QBluetoothSocketPrivate *socket)
-    : QThread(), m_stop(false), isError(false)
+    : QThread(), m_stop(false)
 {
     m_socket_p = socket;
 }
@@ -59,9 +59,11 @@ void InputStreamThread::run()
     qint32 byte;
     Q_UNUSED(byte)
     while (1) {
-        QMutexLocker locker(&m_mutex);
-        if (m_stop || isError)
-            break;
+        {
+            QMutexLocker locker(&m_mutex);
+            if (m_stop)
+                break;
+        }
         readFromInputStream();
     }
 
@@ -75,31 +77,20 @@ void InputStreamThread::run()
     }
 }
 
-bool InputStreamThread::hasError() const
-{
-    QMutexLocker locker(&m_mutex);
-
-    return isError;
-}
-
 bool InputStreamThread::bytesAvalable() const
 {
     QMutexLocker locker(&m_mutex);
     return m_socket_p->buffer.size();
 }
 
-//This runs inside the mutex and thread.
+//This runs inside the thread.
 void InputStreamThread::readFromInputStream()
 {
     QAndroidJniEnvironment env;
 
-    //TODO this is bad, we need proper blocking detection
-    jint count = m_socket_p->inputStream.callMethod<jint>("available");
-    if (count <= 0)
-        return;
-
     int bufLen = 1000; // Seems to magical number that also low-end products can survive.
     jbyteArray nativeArray = env->NewByteArray(bufLen);
+
 
     jint ret = m_socket_p->inputStream.callMethod<jint>("read", "([BII)I", nativeArray, 0, bufLen);
 
@@ -109,8 +100,17 @@ void InputStreamThread::readFromInputStream()
             env->ExceptionClear();
         }
         env->DeleteLocalRef(nativeArray);
-        isError = true;
-        QMetaObject::invokeMethod(this, "error", Qt::QueuedConnection);
+        QMutexLocker lock(&m_mutex);
+        m_stop = true;
+
+        /*
+         * We cannot distinguish IOException due to valid closure or due to other error
+         * Therefore we always have to throw an error and a disconnect signal
+         * A genuine disconnect wouldn't need the error signal.
+         * For now we always signal error which implicitly emits disconnect() too.
+         */
+
+        emit error();
         return;
     }
 
@@ -120,6 +120,7 @@ void InputStreamThread::readFromInputStream()
         return;
     }
 
+    QMutexLocker lock(&m_mutex);
     char *writePtr = m_socket_p->buffer.reserve(bufLen);
     env->GetByteArrayRegion(nativeArray, 0, ret, reinterpret_cast<jbyte*>(writePtr));
     env->DeleteLocalRef(nativeArray);
@@ -137,7 +138,7 @@ qint64 InputStreamThread::readData(char *data, qint64 maxSize)
 {
     QMutexLocker locker(&m_mutex);
 
-    if (isError)
+    if (m_stop)
         return -1;
 
     if (!m_socket_p->buffer.isEmpty())

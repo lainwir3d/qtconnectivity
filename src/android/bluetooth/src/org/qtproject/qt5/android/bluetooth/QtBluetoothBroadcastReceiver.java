@@ -67,39 +67,10 @@ public class QtBluetoothBroadcastReceiver extends BroadcastReceiver
 
     public native void jniOnReceive(int qtObject, Context context, Intent intent);
 
-    /*static public void myregister()
-    {
-        try {
-            QtBluetoothBroadcastReceiver receiver = new QtBluetoothBroadcastReceiver();
-            Intent i = qtactivity.registerReceiver(receiver,
-                    new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
-            System.out.println("1 " + i);
-            i = qtactivity.registerReceiver(receiver,
-                    new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
-            System.out.println("3 " + i);
-            i = qtactivity.registerReceiver(receiver,
-                    new IntentFilter(BluetoothDevice.ACTION_FOUND));
-            System.out.println("4 " + i);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }*/
-
     static public void setActivity(Activity activity, Object activityDelegate)
     {
         qtactivity = activity;
     }
-
-    /*static public void test()
-    {
-        try {
-            System.out.println("--------------------------------------");
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            qtactivity.startActivityForResult(enableBtIntent, 33);
-        } catch (Exception ex) {
-           ex.printStackTrace();
-        }
-    }*/
 
     static public void setDiscoverable()
     {

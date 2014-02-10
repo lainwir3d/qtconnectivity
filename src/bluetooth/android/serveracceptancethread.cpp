@@ -47,7 +47,7 @@
 Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 ServerAcceptanceThread::ServerAcceptanceThread(QObject *parent) :
-    QThread(parent), m_stop(false)
+    QThread(parent), m_stop(false), maxPendingConnections(1)
 {
     btAdapter = QAndroidJniObject::callStaticObjectMethod("android/bluetooth/BluetoothAdapter",
                                                           "getDefaultAdapter",
@@ -61,11 +61,14 @@ ServerAcceptanceThread::~ServerAcceptanceThread()
     shutdownPendingConnections();
 }
 
-void ServerAcceptanceThread::setServiceDetails(const QBluetoothUuid &uuid, const QString &serviceName)
+void ServerAcceptanceThread::setServiceDetails(const QBluetoothUuid &uuid,
+                                               const QString &serviceName,
+                                               QBluetooth::SecurityFlags securityFlags)
 {
     QMutexLocker lock(&m_mutex);
     m_uuid = uuid;
     m_serviceName = serviceName;
+    secFlags = securityFlags;
 }
 
 void ServerAcceptanceThread::run()
@@ -83,7 +86,6 @@ void ServerAcceptanceThread::run()
 
     m_stop = false;
 
-    //TODO may want to support secure RFCOMM
     QString tempUuid = m_uuid.toString();
     tempUuid.chop(1); //remove trailing '}'
     tempUuid.remove(0,1); //remove first '{'
@@ -95,10 +97,19 @@ void ServerAcceptanceThread::run()
                 "(Ljava/lang/String;)Ljava/util/UUID;",
                 inputString.object<jstring>());
     inputString = QAndroidJniObject::fromString(m_serviceName);
-    btServerSocket = btAdapter.callObjectMethod("listenUsingInsecureRfcommWithServiceRecord",
+    if (((int)secFlags) == 0) { //no form of security flag set
+        qCDebug(QT_BT_ANDROID) << "InSecure listening";
+        btServerSocket = btAdapter.callObjectMethod("listenUsingInsecureRfcommWithServiceRecord",
                                                 "(Ljava/lang/String;Ljava/util/UUID;)Landroid/bluetooth/BluetoothServerSocket;",
                                                 inputString.object<jstring>(),
                                                 uuidObject.object<jobject>());
+    } else {
+        qCDebug(QT_BT_ANDROID) << "Secure listening";
+        btServerSocket = btAdapter.callObjectMethod("listenUsingRfcommWithServiceRecord",
+                                                    "(Ljava/lang/String;Ljava/util/UUID;)Landroid/bluetooth/BluetoothServerSocket;",
+                                                    inputString.object<jstring>(),
+                                                    uuidObject.object<jobject>());
+    }
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
         env->ExceptionClear();
@@ -137,10 +148,23 @@ void ServerAcceptanceThread::run()
             //if m_stop is true there is nothing really to be done but exit
             m_stop = true;
         } else if (socket.isValid()){
-            pendingSockets.append(socket);
-            emit newConnection();
+            if (pendingSockets.count() < maxPendingConnections) {
+                pendingSockets.append(socket);
+                emit newConnection();
+            } else {
+                qCWarning(QT_BT_ANDROID) << "Refusing connection due to limited pending socket queue";
+                socket.callMethod<void>("close");
+                if (env->ExceptionCheck()) {
+                    qCWarning(QT_BT_ANDROID) << "Error during refusal of new socket";
+                    env->ExceptionDescribe();
+                    env->ExceptionClear();
+                }
+
+
+            }
         } else {
-            qCDebug(QT_BT_ANDROID) << "FFFFGGGGGG";
+            //should never happen as invalid socket should cause exception
+            qCWarning(QT_BT_ANDROID) << "Invalid state during server socket accept";
         }
     }
 
@@ -154,8 +178,18 @@ void ServerAcceptanceThread::stop()
 {
     QMutexLocker lock(&m_mutex);
     m_stop = true;
-    if (btServerSocket.isValid())
+
+    QAndroidJniEnvironment env;
+    if (btServerSocket.isValid()) {
+        qCDebug(QT_BT_ANDROID) << "Closing server socket";
         btServerSocket.callMethod<void>("close");
+        if (env->ExceptionCheck()) {
+            qCWarning(QT_BT_ANDROID) << "Exception during closure of server socket";
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+        qCDebug(QT_BT_ANDROID) << "Closing server socket111";
+    }
 }
 
 bool ServerAcceptanceThread::hasPendingConnections() const
@@ -177,6 +211,12 @@ QAndroidJniObject ServerAcceptanceThread::nextPendingConnection()
         return QAndroidJniObject();
     else
         return pendingSockets.takeFirst();
+}
+
+void ServerAcceptanceThread::setMaxPendingConnections(int maximumCount)
+{
+    QMutexLocker lock(&m_mutex);
+    maxPendingConnections = maximumCount;
 }
 
 //must be run inside the lock but doesn't lock by itself

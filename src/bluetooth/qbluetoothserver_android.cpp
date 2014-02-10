@@ -60,6 +60,7 @@ QBluetoothServerPrivate::QBluetoothServerPrivate(QBluetoothServiceInfo::Protocol
       m_lastError(QBluetoothServer::NoError)
 {
         thread = new ServerAcceptanceThread();
+        thread->setMaxPendingConnections(maxPendingConnections);
 }
 
 QBluetoothServerPrivate::~QBluetoothServerPrivate()
@@ -83,7 +84,7 @@ bool QBluetoothServerPrivate::initiateActiveListening(
 {
     Q_UNUSED(uuid);
     Q_UNUSED(serviceName);
-    qCDebug(QT_BT_ANDROID) << "initiate active listening" << uuid.toString() << serviceName;
+    qCDebug(QT_BT_ANDROID) << "Initiate active listening" << uuid.toString() << serviceName;
 
     if (uuid.isNull() || serviceName.isEmpty())
         return false;
@@ -94,7 +95,7 @@ bool QBluetoothServerPrivate::initiateActiveListening(
 
     m_uuid = uuid;
     m_serviceName = serviceName;
-    thread->setServiceDetails(m_uuid, m_serviceName);
+    thread->setServiceDetails(m_uuid, m_serviceName, securityFlags);
 
     Q_ASSERT(!thread->isRunning());
     thread->start();
@@ -207,10 +208,9 @@ bool QBluetoothServer::listen(const QBluetoothAddress &localAdapter, quint16 por
 
 void QBluetoothServer::setMaxPendingConnections(int numConnections)
 {
-    //Q_D(QBluetoothServer);
-    //TODO
-    Q_UNUSED(numConnections);
-    //d->maxPendingConnections = numConnections; //Currently not used
+    Q_D(QBluetoothServer);
+    d->maxPendingConnections = numConnections;
+    d->thread->setMaxPendingConnections(numConnections);
 }
 
 QBluetoothAddress QBluetoothServer::serverAddress() const
@@ -260,16 +260,14 @@ QBluetoothSocket *QBluetoothServer::nextPendingConnection()
 
 void QBluetoothServer::setSecurityFlags(QBluetooth::SecurityFlags security)
 {
-    //TODO
     Q_D(QBluetoothServer);
-    d->securityFlags = security; //not used
+    d->securityFlags = security;
 }
 
 QBluetooth::SecurityFlags QBluetoothServer::securityFlags() const
 {
-    //TODO
     Q_D(const QBluetoothServer);
-    return d->securityFlags; //not used
+    return d->securityFlags;
 }
 
 QT_END_NAMESPACE

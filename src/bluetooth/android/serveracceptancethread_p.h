@@ -46,6 +46,7 @@
 #include <QtCore/QThread>
 #include <QtAndroidExtras/QAndroidJniObject>
 #include <QtBluetooth/QBluetoothUuid>
+#include "qbluetooth.h"
 
 
 class ServerAcceptanceThread : public QThread
@@ -58,12 +59,14 @@ public:
 
     explicit ServerAcceptanceThread(QObject *parent = 0);
     ~ServerAcceptanceThread();
-    void setServiceDetails(const QBluetoothUuid &uuid, const QString &serviceName);
+    void setServiceDetails(const QBluetoothUuid &uuid, const QString &serviceName,
+                           QBluetooth::SecurityFlags securityFlags);
     virtual void run();
 
     void stop();
     bool hasPendingConnections() const;
     QAndroidJniObject nextPendingConnection();
+    void setMaxPendingConnections(int maximumCount);
 
 signals:
     void newConnection();
@@ -81,6 +84,8 @@ private:
     QBluetoothUuid m_uuid;
     bool m_stop;
     AndroidError lastError;
+    int maxPendingConnections;
+    QBluetooth::SecurityFlags secFlags;
 
 };
 

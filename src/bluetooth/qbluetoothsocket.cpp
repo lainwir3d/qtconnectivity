@@ -47,14 +47,9 @@
 #include "qbluetoothserviceinfo.h"
 #include "qbluetoothservicediscoveryagent.h"
 
-
-#include <QtCore/QLoggingCategory>
 #include <QSocketNotifier>
 
 QT_BEGIN_NAMESPACE
-
-Q_DECLARE_LOGGING_CATEGORY(QT_BT)
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_QNX)
 
 /*!
     \class QBluetoothSocket
@@ -314,7 +309,6 @@ void QBluetoothSocket::connectToService(const QBluetoothServiceInfo &service, Op
     Q_D(QBluetoothSocket);
 
     if (state() != QBluetoothSocket::UnconnectedState && state() != QBluetoothSocket::ServiceLookupState) {
-        qCWarning(QT_BT)  << "QBluetoothSocket::connectToService called on busy socket";
         d->errorString = QBluetoothSocket::tr("Trying to connect while connection is in progress");
         setSocketError(QBluetoothSocket::OperationError);
         return;
@@ -347,10 +341,8 @@ void QBluetoothSocket::connectToService(const QBluetoothServiceInfo &service, Op
     } else {
         // try doing service discovery to see if we can find the socket
         if(service.serviceUuid().isNull()){
-            qCWarning(QT_BT) << "No port, no PSM, and no UUID provided, unable to connect";
             return;
         }
-        qCDebug(QT_BT) << "Need a port/psm, doing discovery";
         doDeviceDiscovery(service, openMode);
     }
 #endif
@@ -384,7 +376,6 @@ void QBluetoothSocket::connectToService(const QBluetoothAddress &address, const 
     Q_D(QBluetoothSocket);
 
     if (state() != QBluetoothSocket::UnconnectedState) {
-        qCWarning(QT_BT)  << "QBluetoothSocket::connectToService called on busy socket";
         d->errorString = QBluetoothSocket::tr("Trying to connect while connection is in progress");
         setSocketError(QBluetoothSocket::OperationError);
         return;
@@ -433,10 +424,8 @@ void QBluetoothSocket::connectToService(const QBluetoothAddress &address, quint1
     Q_UNUSED(address);
     d->errorString = tr("Connecting to port is not supported");
     setSocketError(QBluetoothSocket::ServiceNotFoundError);
-    qCWarning(QT_BT) << "Connecting to port is not supported";
 #else
     if (state() != QBluetoothSocket::UnconnectedState) {
-        qCWarning(QT_BT)  << "QBluetoothSocket::connectToService called on busy socket";
         d->errorString = QBluetoothSocket::tr("Trying to connect while connection is in progress");
         setSocketError(QBluetoothSocket::OperationError);
         return;
@@ -537,7 +526,6 @@ void QBluetoothSocket::doDeviceDiscovery(const QBluetoothServiceInfo &service, O
     Q_D(QBluetoothSocket);
 
     setSocketState(QBluetoothSocket::ServiceLookupState);
-    qCDebug(QT_BT) << "Starting discovery";
 
     if(d->discoveryAgent) {
         d->discoveryAgent->stop();
@@ -563,7 +551,6 @@ void QBluetoothSocket::doDeviceDiscovery(const QBluetoothServiceInfo &service, O
     // we have to ID the service somehow
     Q_ASSERT(!d->discoveryAgent->uuidFilter().isEmpty());
 
-    qCDebug(QT_BT) << "UUID filter" << d->discoveryAgent->uuidFilter();
 
     d->discoveryAgent->start(QBluetoothServiceDiscoveryAgent::FullDiscovery);
 }
@@ -571,22 +558,18 @@ void QBluetoothSocket::doDeviceDiscovery(const QBluetoothServiceInfo &service, O
 void QBluetoothSocket::serviceDiscovered(const QBluetoothServiceInfo &service)
 {
     Q_D(QBluetoothSocket);
-    qCDebug(QT_BT) << "FOUND SERVICE!" << service;
     if (service.protocolServiceMultiplexer() > 0 || service.serverChannel() > 0) {
         connectToService(service, d->openMode);
         d->discoveryAgent->deleteLater();
         d->discoveryAgent = 0;
     } else {
-        qCDebug(QT_BT) << "Could not find port/psm for potential remote service";
     }
 }
 
 void QBluetoothSocket::discoveryFinished()
 {
-    qCDebug(QT_BT) << "Socket discovery finished";
     Q_D(QBluetoothSocket);
     if (d->discoveryAgent){
-        qCDebug(QT_BT) << "Didn't find any";
         d->errorString = tr("Service cannot be found");
         setSocketError(ServiceNotFoundError);
         setSocketState(QBluetoothSocket::UnconnectedState);

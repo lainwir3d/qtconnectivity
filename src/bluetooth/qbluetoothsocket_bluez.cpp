@@ -49,7 +49,6 @@
 
 #include <qplatformdefs.h>
 
-#include <QtCore/QLoggingCategory>
 
 #include <errno.h>
 #include <unistd.h>
@@ -58,8 +57,6 @@
 #include <QtCore/QSocketNotifier>
 
 QT_BEGIN_NAMESPACE
-
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 QBluetoothSocketPrivate::QBluetoothSocketPrivate()
     : socket(-1),
@@ -236,7 +233,6 @@ void QBluetoothSocketPrivate::_q_readNotify()
         readNotifier->setEnabled(false);
         connectWriteNotifier->setEnabled(false);
         errorString = qt_error_string(errsv);
-        qCWarning(QT_BT_BLUEZ) << Q_FUNC_INFO << socket << "error:" << readFromDevice << errorString;
         if(errsv == EHOSTDOWN)
             q->setSocketError(QBluetoothSocket::HostNotFoundError);
         else
@@ -353,7 +349,6 @@ QString QBluetoothSocketPrivate::peerName() const
 
         convertAddress(addr.l2_bdaddr.b, bdaddr);
     } else {
-        qCWarning(QT_BT_BLUEZ) << "peerName() called on socket of unknown type";
         return QString();
     }
 

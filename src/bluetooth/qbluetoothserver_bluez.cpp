@@ -45,14 +45,12 @@
 #include "qbluetoothlocaldevice.h"
 #include "bluez/bluez_data_p.h"
 
-#include <QtCore/QLoggingCategory>
 #include <QtCore/QSocketNotifier>
 
 #include <errno.h>
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 static inline void convertAddress(quint64 from, quint8 (&to)[6])
 {
@@ -104,14 +102,11 @@ bool QBluetoothServer::listen(const QBluetoothAddress &address, quint16 port)
     Q_D(QBluetoothServer);
 
     if (d->socket->state() == QBluetoothSocket::ListeningState) {
-        qCWarning(QT_BT_BLUEZ) << "Socket already in listen mode, close server first";
         return false; //already listening, nothing to do
     }
 
     QBluetoothLocalDevice device(address);
     if (!device.isValid()) {
-        qCWarning(QT_BT_BLUEZ) << "Device does not support Bluetooth or"
-                                 << address.toString() << "is not a valid local adapter";
         d->m_lastError = QBluetoothServer::UnknownError;
         emit error(d->m_lastError);
         return false;
@@ -121,7 +116,6 @@ bool QBluetoothServer::listen(const QBluetoothAddress &address, quint16 port)
     if (hostMode == QBluetoothLocalDevice::HostPoweredOff) {
         d->m_lastError = QBluetoothServer::PoweredOffError;
         emit error(d->m_lastError);
-        qCWarning(QT_BT_BLUEZ) << "Bluetooth device is powered off";
         return false;
     }
 
@@ -289,11 +283,8 @@ void QBluetoothServer::setSecurityFlags(QBluetooth::SecurityFlags security)
         if (security.testFlag(QBluetooth::Secure))
             lm |= RFCOMM_LM_SECURE;
 
-        qCDebug(QT_BT_BLUEZ) << hex << "Setting lm to" << lm << security;
 
         if (setsockopt(d->socket->socketDescriptor(), SOL_RFCOMM, RFCOMM_LM, &lm, sizeof(lm)) < 0){
-            qCWarning(QT_BT_BLUEZ) << "Failed to set socket option, closing socket for safety" << errno;
-            qCWarning(QT_BT_BLUEZ) << "Error: " << qt_error_string(errno);
             d->m_lastError = InputOutputError;
             emit error(d->m_lastError);
             d->socket->close();
@@ -309,8 +300,6 @@ void QBluetoothServer::setSecurityFlags(QBluetooth::SecurityFlags security)
             lm |= L2CAP_LM_SECURE;
 
         if (setsockopt(d->socket->socketDescriptor(), SOL_L2CAP, L2CAP_LM, &lm, sizeof(lm)) < 0){
-            qCWarning(QT_BT_BLUEZ) << "Failed to set socket option, closing socket for safety" << errno;
-            qCWarning(QT_BT_BLUEZ) << "Error: " << qt_error_string(errno);
             d->m_lastError = InputOutputError;
             emit error(d->m_lastError);
             d->socket->close();
@@ -329,7 +318,6 @@ QBluetooth::SecurityFlags QBluetoothServer::securityFlags() const
 
     if (d->serverType == QBluetoothServiceInfo::RfcommProtocol) {
         if (getsockopt(d->socket->socketDescriptor(), SOL_RFCOMM, RFCOMM_LM, &lm, (socklen_t *)&len) < 0) {
-            qCWarning(QT_BT_BLUEZ) << "Failed to get security flags" << qt_error_string(errno);
             return QBluetooth::NoSecurity;
         }
 
@@ -346,7 +334,6 @@ QBluetooth::SecurityFlags QBluetoothServer::securityFlags() const
             security |= QBluetooth::Authorization;
     } else {
         if (getsockopt(d->socket->socketDescriptor(), SOL_L2CAP, L2CAP_LM, &lm, (socklen_t *)&len) < 0) {
-            qCWarning(QT_BT_BLUEZ) << "Failed to get security flags" << qt_error_string(errno);
             return QBluetooth::NoSecurity;
         }
 

@@ -54,7 +54,8 @@ SOURCES += \
     qbluetoothtransferrequest.cpp \
     qbluetoothtransferreply.cpp
 
-config_bluez:qtHaveModule(dbus) {
+#config_bluez:qtHaveModule(dbus) {
+linux {
     QT *= dbus
     DEFINES += QT_BLUEZ_BLUETOOTH
 

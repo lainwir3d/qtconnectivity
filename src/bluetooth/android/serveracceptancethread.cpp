@@ -31,12 +31,12 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
 
 #include "android/serveracceptancethread_p.h"
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 ServerAcceptanceThread::ServerAcceptanceThread(QObject *parent) :
     QObject(parent), maxPendingConnections(1)

@@ -41,7 +41,7 @@
 #include <QtGui/QGuiApplication>
 #include <QtQuick/QQuickView>
 #include <QtQml/QQmlEngine>
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 
 int main(int argc, char *argv[])
 {

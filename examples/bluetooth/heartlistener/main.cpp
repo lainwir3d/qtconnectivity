@@ -39,7 +39,7 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QQmlContext>
 #include <QGuiApplication>
 #include <QQuickView>

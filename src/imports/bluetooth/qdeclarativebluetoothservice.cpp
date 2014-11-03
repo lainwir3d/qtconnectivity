@@ -33,7 +33,7 @@
 
 #include "qdeclarativebluetoothservice_p.h"
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 
 #include <QtBluetooth/QBluetoothDeviceInfo>
 #include <QtBluetooth/QBluetoothSocket>
@@ -76,7 +76,7 @@
     The corresponding handler is \c onDetailsChanged.
 */
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_QML)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_QML)
 
 class QDeclarativeBluetoothServicePrivate
 {

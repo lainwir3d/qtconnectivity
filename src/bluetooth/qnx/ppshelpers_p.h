@@ -49,7 +49,7 @@
 #include <errno.h>
 #include <sys/pps.h>
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/QSocketNotifier>
 #include <QtCore/QStringList>
 
@@ -61,7 +61,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_QNX)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_QNX)
 
 class BBSocketNotifier : public QObject
 {

@@ -36,7 +36,7 @@
 
 #include "qbluetoothsocket_p.h"
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -49,20 +49,20 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 HciManager::HciManager(const QBluetoothAddress& deviceAdapter, QObject *parent) :
     QObject(parent), hciSocket(-1), hciDev(-1), notifier(0)
 {
     hciSocket = ::socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
     if (hciSocket < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Cannot open HCI socket";
+        qDebug() << "Cannot open HCI socket";
         return; //TODO error report
     }
 
     hciDev = hciForAddress(deviceAdapter);
     if (hciDev < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Cannot find hci dev for" << deviceAdapter.toString();
+        qDebug() << "Cannot find hci dev for" << deviceAdapter.toString();
         close(hciSocket);
         hciSocket = -1;
         return;
@@ -75,7 +75,7 @@ HciManager::HciManager(const QBluetoothAddress& deviceAdapter, QObject *parent) 
     addr.hci_family = AF_BLUETOOTH;
 
     if (::bind(hciSocket, (struct sockaddr *) (&addr), sizeof(addr)) < 0) {
-        qCWarning(QT_BT_BLUEZ) << "HCI bind failed:" << strerror(errno);
+        qDebug() << "HCI bind failed:" << strerror(errno);
         close(hciSocket);
         hciSocket = hciDev = -1;
         return;
@@ -156,7 +156,7 @@ bool HciManager::monitorEvent(HciManager::HciEvent event)
     hci_filter filter;
     socklen_t length = sizeof(hci_filter);
     if (getsockopt(hciSocket, SOL_HCI, HCI_FILTER, &filter, &length) < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Cannot retrieve HCI filter settings";
+        qDebug() << "Cannot retrieve HCI filter settings";
         return false;
     }
 
@@ -165,7 +165,7 @@ bool HciManager::monitorEvent(HciManager::HciEvent event)
     //hci_filter_all_events(&filter);
 
     if (setsockopt(hciSocket, SOL_HCI, HCI_FILTER, &filter, sizeof(hci_filter)) < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Could not set HCI socket options:" << strerror(errno);
+        qDebug() << "Could not set HCI socket options:" << strerror(errno);
         return false;
     }
 
@@ -184,7 +184,7 @@ void HciManager::stopEvents()
     hci_filter_clear(&filter);
 
     if (setsockopt(hciSocket, SOL_HCI, HCI_FILTER, &filter, sizeof(hci_filter)) < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Could not clear HCI socket options:" << strerror(errno);
+        qDebug() << "Could not clear HCI socket options:" << strerror(errno);
         return;
     }
 
@@ -212,7 +212,7 @@ QBluetoothAddress HciManager::addressForConnectionHandle(quint16 handle) const
     info = p->conn_info;
 
     if (ioctl(hciSocket, HCIGETCONNLIST, (void *) infoList) < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Cannot retrieve connection list";
+        qDebug() << "Cannot retrieve connection list";
         return QBluetoothAddress();
     }
 
@@ -240,7 +240,7 @@ void HciManager::_q_readNotify()
     size = ::read(hciSocket, buffer, sizeof(buffer));
     if (size < 0) {
         if (errno != EAGAIN && errno != EINTR)
-            qCWarning(QT_BT_BLUEZ) << "Failed reading HCI events:" << qt_error_string(errno);
+            qDebug() << "Failed reading HCI events:" << qt_error_string(errno);
 
         return;
     }
@@ -257,17 +257,17 @@ void HciManager::_q_readNotify()
     data = data + HCI_EVENT_HDR_SIZE + 1;
 
     if (header->plen != size) {
-        qCWarning(QT_BT_BLUEZ) << "Invalid HCI event packet size";
+        qDebug() << "Invalid HCI event packet size";
         return;
     }
 
-    qCDebug(QT_BT_BLUEZ) << "HCI event triggered, type:" << hex << header->evt;
+    qDebug() << "HCI event triggered, type:" << hex << header->evt;
 
     switch (header->evt) {
     case EVT_ENCRYPT_CHANGE:
     {
         const evt_encrypt_change *event = (evt_encrypt_change *) data;
-        qCDebug(QT_BT_BLUEZ) << "HCI Encrypt change, status:"
+        qDebug() << "HCI Encrypt change, status:"
                              << (event->status == 0 ? "Success" : "Failed")
                              << "handle:" << hex << event->handle
                              << "encrypt:" << event->encrypt;

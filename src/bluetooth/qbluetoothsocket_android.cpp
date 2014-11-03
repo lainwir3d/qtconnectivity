@@ -35,7 +35,7 @@
 #include "qbluetoothsocket.h"
 #include "qbluetoothsocket_p.h"
 #include "qbluetoothaddress.h"
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/QTime>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
@@ -43,7 +43,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 QBluetoothSocketPrivate::QBluetoothSocketPrivate()
   : socket(-1),

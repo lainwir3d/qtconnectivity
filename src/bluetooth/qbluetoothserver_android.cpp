@@ -31,7 +31,7 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include "qbluetoothserver.h"
 #include "qbluetoothserver_p.h"
 #include "qbluetoothsocket.h"
@@ -43,7 +43,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 QHash<QBluetoothServerPrivate*, int> __fakeServerPorts;
 

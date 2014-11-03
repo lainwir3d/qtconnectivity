@@ -32,7 +32,7 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
 
 #include "android/inputstreamthread_p.h"
@@ -40,7 +40,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 InputStreamThread::InputStreamThread(QBluetoothSocketPrivate *socket)
     : QObject(), m_socket_p(socket), expectClosure(false)

@@ -33,7 +33,7 @@
 
 #include "qdeclarativebluetoothsocket_p.h"
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/QPointer>
 #include <QtCore/QStringList>
 #include <QtCore/QDataStream>
@@ -67,7 +67,7 @@
     or passing in the service return from BluetoothDiscoveryModel.
  */
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_QML)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_QML)
 
 class QDeclarativeBluetoothSocketPrivate
 {

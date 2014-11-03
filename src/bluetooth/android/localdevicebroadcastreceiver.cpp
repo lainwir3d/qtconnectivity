@@ -31,14 +31,14 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/private/qjnihelpers_p.h>
 #include "localdevicebroadcastreceiver_p.h"
 #include "android/jni_android_p.h"
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 const char *scanModes[] = {"SCAN_MODE_NONE", "SCAN_MODE_CONNECTABLE", "SCAN_MODE_CONNECTABLE_DISCOVERABLE"};
 const char *bondModes[] = {"BOND_NONE", "BOND_BONDING", "BOND_BONDED"};

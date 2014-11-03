@@ -36,7 +36,7 @@
 
 #include <QPixmap>
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/QBluetoothDeviceInfo>
 #include <QtBluetooth/QBluetoothAddress>
 
@@ -84,7 +84,7 @@
     \sa QBluetoothServiceDiscoveryAgent
 */
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_QML)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_QML)
 
 class QDeclarativeBluetoothDiscoveryModelPrivate
 {

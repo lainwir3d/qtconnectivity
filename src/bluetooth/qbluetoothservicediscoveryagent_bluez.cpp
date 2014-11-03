@@ -43,14 +43,14 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QLibraryInfo>
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/QProcess>
 #include <QtDBus/QDBusPendingCallWatcher>
 #include <QtConcurrent/QtConcurrentRun>
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 static inline void convertAddress(quint64 from, quint8 (&to)[6])
 {
@@ -93,7 +93,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::start(const QBluetoothAddress &addr
 {
     Q_Q(QBluetoothServiceDiscoveryAgent);
 
-    qCDebug(QT_BT_BLUEZ) << "Discovery on: " << address.toString() << "Mode:" << DiscoveryMode();
+    qDebug() << "Discovery on: " << address.toString() << "Mode:" << DiscoveryMode();
 
     if (managerBluez5) {
         startBluez5(address);
@@ -214,7 +214,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::runSdpScan(
                                   Q_ARG(QString,
                                         QBluetoothServiceDiscoveryAgent::tr("Unable to find sdpscanner")),
                                   Q_ARG(QStringList, QStringList()));
-        qCWarning(QT_BT_BLUEZ) << "Cannot find sdpscanner:"
+        qDebug() << "Cannot find sdpscanner:"
                                << fileInfo.canonicalFilePath();
         return;
     }
@@ -225,7 +225,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::runSdpScan(
     QByteArray output;
 
     QProcess process;
-    process.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    process.setProcessChannelMode(QProcess::ForwardedChannels);
     process.setReadChannel(QProcess::StandardOutput);
     process.start(fileInfo.canonicalFilePath(), arguments);
 
@@ -238,7 +238,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::runSdpScan(
 
     if (process.exitStatus() != QProcess::NormalExit
             || process.exitCode() != 0) {
-        qCWarning(QT_BT_BLUEZ) << "SDP scan failure"
+        qDebug() << "SDP scan failure"
                                << process.exitStatus() << process.exitCode()
                                << remoteAddress;
         if (singleDevice) {
@@ -290,7 +290,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_finishSdpScan(QBluetoothServiceD
     Q_Q(QBluetoothServiceDiscoveryAgent);
 
     if (errorCode != QBluetoothServiceDiscoveryAgent::NoError) {
-        qCWarning(QT_BT_BLUEZ) << "SDP search failed for"
+        qDebug() << "SDP search failed for"
                               << discoveredDevices.at(0).address().toString();
         // We have an error which we need to indicate and stop further processing
         discoveredDevices.clear();
@@ -321,7 +321,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_finishSdpScan(QBluetoothServiceD
 
             if (!isDuplicatedService(serviceInfo)) {
                 discoveredServices.append(serviceInfo);
-                qCDebug(QT_BT_BLUEZ) << "Discovered services" << discoveredDevices.at(0).address().toString()
+                qDebug() << "Discovered services" << discoveredDevices.at(0).address().toString()
                                      << serviceInfo.serviceName() << serviceInfo.serviceUuid()
                                      << ">>>" << serviceInfo.serviceClassUuids();
 
@@ -335,7 +335,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_finishSdpScan(QBluetoothServiceD
 
 void QBluetoothServiceDiscoveryAgentPrivate::stop()
 {
-    qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "Stop called";
+    qDebug() << Q_FUNC_INFO << "Stop called";
     if (device) {
         //we are waiting for _q_discoveredServices() slot to be called
         // adapter is already 0
@@ -367,7 +367,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
 
     const QBluetoothAddress &address = watcher->property("_q_BTaddress").value<QBluetoothAddress>();
 
-    qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "created" << address.toString();
+    qDebug() << Q_FUNC_INFO << "created" << address.toString();
 
     QDBusPendingReply<QDBusObjectPath> deviceObjectPath = *watcher;
     if (deviceObjectPath.isError()) {
@@ -375,7 +375,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
             delete adapter;
             adapter = 0;
             _q_serviceDiscoveryFinished();
-            qCDebug(QT_BT_BLUEZ) << "Create device failed Error: " << error << deviceObjectPath.error().name();
+            qDebug() << "Create device failed Error: " << error << deviceObjectPath.error().name();
             return;
         }
 
@@ -390,7 +390,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
                 emit q->error(error);
             }
             _q_serviceDiscoveryFinished();
-            qCDebug(QT_BT_BLUEZ) << "Can't find device after creation Error: " << error << deviceObjectPath.error().name();
+            qDebug() << "Can't find device after creation Error: " << error << deviceObjectPath.error().name();
             return;
         }
     }
@@ -424,7 +424,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
      * In case we have LE device finish service discovery; otherwise search for regular services.
      */
     if (classType.isEmpty()) { //is BLE device or device properties above not retrievable
-        qCDebug(QT_BT_BLUEZ) << "Discovered BLE-only device. Normal service discovery skipped.";
+        qDebug() << "Discovered BLE-only device. Normal service discovery skipped.";
         delete device;
         device = 0;
 
@@ -434,7 +434,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
             b = b.remove(QLatin1Char('{')).remove(QLatin1Char('}'));
             const QBluetoothUuid uuid(b);
 
-            qCDebug(QT_BT_BLUEZ) << "Discovered service" << uuid << uuidFilter.size();
+            qDebug() << "Discovered service" << uuid << uuidFilter.size();
             QBluetoothServiceInfo service;
             service.setDevice(discoveredDevices.at(0));
             bool ok = false;
@@ -482,7 +482,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
             pattern += uuid.toString().remove(QLatin1Char('{')).remove(QLatin1Char('}')) + QLatin1Char(' ');
 
         pattern = pattern.trimmed();
-        qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "Discover restrictions:" << pattern;
+        qDebug() << Q_FUNC_INFO << "Discover restrictions:" << pattern;
 
         QDBusPendingReply<ServiceMap> discoverReply = device->DiscoverServices(pattern);
         watcher = new QDBusPendingCallWatcher(discoverReply, q);
@@ -497,12 +497,12 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_discoveredServices(QDBusPendingC
     if (!device)
         return;
 
-    qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO;
+    qDebug() << Q_FUNC_INFO;
     Q_Q(QBluetoothServiceDiscoveryAgent);
 
     QDBusPendingReply<ServiceMap> reply = *watcher;
     if (reply.isError()) {
-        qCDebug(QT_BT_BLUEZ) << "discoveredServices error: " << error << reply.error().message();
+        qDebug() << "discoveredServices error: " << error << reply.error().message();
         watcher->deleteLater();
         if (singleDevice) {
             error = QBluetoothServiceDiscoveryAgent::UnknownError;
@@ -517,7 +517,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_discoveredServices(QDBusPendingC
 
     ServiceMap map = reply.value();
 
-    qCDebug(QT_BT_BLUEZ) << "Parsing xml" << discoveredDevices.at(0).address().toString() << discoveredDevices.count() << map.count();
+    qDebug() << "Parsing xml" << discoveredDevices.at(0).address().toString() << discoveredDevices.count() << map.count();
 
 
 
@@ -548,14 +548,14 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_discoveredServices(QDBusPendingC
 
         if (!isDuplicatedService(serviceInfo)) {
             discoveredServices.append(serviceInfo);
-            qCDebug(QT_BT_BLUEZ) << "Discovered services" << discoveredDevices.at(0).address().toString()
-                                 << serviceInfo.serviceName();
+            qDebug() << "Discovered services" << discoveredDevices.at(0).address().toString()
+                                 << serviceInfo.serviceName() << serviceInfo.serviceUuid();
             emit q->serviceDiscovered(serviceInfo);
         }
 
         // could stop discovery, check for state
         if (discoveryState() == Inactive)
-            qCDebug(QT_BT_BLUEZ) << "Exit discovery after stop";
+            qDebug() << "Exit discovery after stop";
     }
 
     watcher->deleteLater();
@@ -631,13 +631,13 @@ void QBluetoothServiceDiscoveryAgentPrivate::performMinimalServiceDiscovery(cons
     }
 
     if (uuidStrings.isEmpty() || discoveredDevices.isEmpty()) {
-        qCWarning(QT_BT_BLUEZ) << "No uuids found for" << deviceAddress.toString();
+        qDebug() << "No uuids found for" << deviceAddress.toString();
          // nothing found -> go to next uuid
         _q_serviceDiscoveryFinished();
         return;
     }
 
-    qCDebug(QT_BT_BLUEZ) << "Minimal uuid list for" << deviceAddress.toString() << uuidStrings;
+    qDebug() << "Minimal uuid list for" << deviceAddress.toString() << uuidStrings;
 
     QBluetoothUuid uuid;
     for (int i = 0; i < uuidStrings.count(); i++) {
@@ -681,7 +681,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::performMinimalServiceDiscovery(cons
         //don't include the service if we already discovered it before
         if (!isDuplicatedService(serviceInfo)) {
             discoveredServices << serviceInfo;
-            qCDebug(QT_BT_BLUEZ) << "Discovered services" << discoveredDevices.at(0).address().toString()
+            qDebug() << "Discovered services" << discoveredDevices.at(0).address().toString()
                                  << serviceInfo.serviceName();
             emit q->serviceDiscovered(serviceInfo);
         }
@@ -744,7 +744,7 @@ QVariant QBluetoothServiceDiscoveryAgentPrivate::readAttributeValue(QXmlStreamRe
 
         return QVariant::fromValue<QBluetoothServiceInfo::Sequence>(sequence);
     } else {
-        qCWarning(QT_BT_BLUEZ) << "unknown attribute type"
+        qDebug() << "unknown attribute type"
                                << xml.name().toString()
                                << xml.attributes().value(QStringLiteral("value")).toString();
         xml.skipCurrentElement();

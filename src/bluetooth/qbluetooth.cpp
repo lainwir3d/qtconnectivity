@@ -31,7 +31,7 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/qbluetooth.h>
 
 QT_BEGIN_NAMESPACE
@@ -76,9 +76,9 @@ namespace QBluetooth {
     Typedef for Bluetooth Low Energy ATT attribute handles.
 */
 
-Q_LOGGING_CATEGORY(QT_BT, "qt.bluetooth")
-Q_LOGGING_CATEGORY(QT_BT_ANDROID, "qt.bluetooth.android")
-Q_LOGGING_CATEGORY(QT_BT_BLUEZ, "qt.bluetooth.bluez")
-Q_LOGGING_CATEGORY(QT_BT_QNX, "qt.bluetooth.qnx")
+//Q_LOGGING_CATEGORY(QT_BT, "qt.bluetooth")
+//Q_LOGGING_CATEGORY(QT_BT_ANDROID, "qt.bluetooth.android")
+//Q_LOGGING_CATEGORY(QT_BT_BLUEZ, "qt.bluetooth.bluez")
+//Q_LOGGING_CATEGORY(QT_BT_QNX, "qt.bluetooth.qnx")
 
 QT_END_NAMESPACE

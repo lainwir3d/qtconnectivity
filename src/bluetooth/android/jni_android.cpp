@@ -34,14 +34,14 @@
 
 #include <jni.h>
 #include <android/log.h>
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/qbluetoothglobal.h>
 #include "android/jni_android_p.h"
 #include "android/androidbroadcastreceiver_p.h"
 #include "android/serveracceptancethread_p.h"
 #include "android/inputstreamthread_p.h"
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 typedef QHash<QByteArray, QAndroidJniObject> JCachedStringFields;
 Q_GLOBAL_STATIC(JCachedStringFields, cachedStringFields)

@@ -32,7 +32,7 @@
 ****************************************************************************/
 
 #include "android/servicediscoverybroadcastreceiver_p.h"
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/private/qjnihelpers_p.h>
 #include <QtAndroidExtras/QAndroidJniEnvironment>
 #include <QtBluetooth/QBluetoothAddress>
@@ -41,7 +41,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_ANDROID)
 
 ServiceDiscoveryBroadcastReceiver::ServiceDiscoveryBroadcastReceiver(QObject* parent): AndroidBroadcastReceiver(parent)
 {

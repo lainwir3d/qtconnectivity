@@ -32,7 +32,7 @@
 ****************************************************************************/
 
 #include <QtCore/QGlobalStatic>
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtCore/QMap>
 #include "bluez5_helper_p.h"
 #include "objectmanager_p.h"
@@ -41,7 +41,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 typedef enum Bluez5TestResultType
 {
@@ -66,10 +66,10 @@ bool isBluez5()
         reply.waitForFinished();
         if (reply.isError()) {
             *bluezVersion() = Bluez5TestResultType::Bluez4;
-            qCDebug(QT_BT_BLUEZ) << "Bluez 4 detected.";
+            qDebug() << "Bluez 4 detected.";
         } else {
             *bluezVersion() = Bluez5TestResultType::Bluez5;
-            qCDebug(QT_BT_BLUEZ) << "Bluez 5 detected.";
+            qDebug() << "Bluez 5 detected.";
         }
     }
 
@@ -114,7 +114,7 @@ Q_GLOBAL_STATIC(QtBluezDiscoveryManager, discoveryManager)
 QtBluezDiscoveryManager::QtBluezDiscoveryManager(QObject *parent) :
     QObject(parent)
 {
-    qCDebug(QT_BT_BLUEZ) << "Creating QtBluezDiscoveryManager";
+    qDebug() << "Creating QtBluezDiscoveryManager";
     d = new QtBluezDiscoveryManagerPrivate();
 
     d->manager = new OrgFreedesktopDBusObjectManagerInterface(
@@ -126,7 +126,7 @@ QtBluezDiscoveryManager::QtBluezDiscoveryManager(QObject *parent) :
 
 QtBluezDiscoveryManager::~QtBluezDiscoveryManager()
 {
-    qCDebug(QT_BT_BLUEZ) << "Destroying QtBluezDiscoveryManager";
+    qDebug() << "Destroying QtBluezDiscoveryManager";
 
     foreach (const QString &adapterPath, d->references.keys()) {
         AdapterData *data = d->references.take(adapterPath);
@@ -209,15 +209,15 @@ void QtBluezDiscoveryManager::unregisterDiscoveryInterest(const QString &adapter
 
 //void QtBluezDiscoveryManager::dumpState() const
 //{
-//    qCDebug(QT_BT_BLUEZ) << "-------------------------";
+//    qDebug() << "-------------------------";
 //    if (d->references.isEmpty()) {
-//        qCDebug(QT_BT_BLUEZ) << "No running registration";
+//        qDebug() << "No running registration";
 //    } else {
 //        foreach (const QString &path, d->references.keys()) {
-//            qCDebug(QT_BT_BLUEZ) << path << "->" << d->references[path]->reference;
+//            qDebug() << path << "->" << d->references[path]->reference;
 //        }
 //    }
-//    qCDebug(QT_BT_BLUEZ) << "-------------------------";
+//    qDebug() << "-------------------------";
 //}
 
 void QtBluezDiscoveryManager::InterfacesRemoved(const QDBusObjectPath &object_path,

@@ -31,7 +31,7 @@
 **
 ****************************************************************************/
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include "qbluetoothdevicediscoveryagent.h"
 #include "qbluetoothdevicediscoveryagent_p.h"
 #include "qbluetoothaddress.h"
@@ -48,7 +48,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 QBluetoothDeviceDiscoveryAgentPrivate::QBluetoothDeviceDiscoveryAgentPrivate(
     const QBluetoothAddress &deviceAdapter, QBluetoothDeviceDiscoveryAgent *parent) :
@@ -126,7 +126,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
 
     if (reply.isError()) {
         errorString = reply.error().message();
-        qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "ERROR: " << errorString;
+        qDebug() << Q_FUNC_INFO << "ERROR: " << errorString;
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
         Q_Q(QBluetoothDeviceDiscoveryAgent);
         emit q->error(lastError);
@@ -148,7 +148,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
         errorString = propertiesReply.error().message();
         delete adapter;
         adapter = 0;
-        qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "ERROR: " << errorString;
+        qDebug() << Q_FUNC_INFO << "ERROR: " << errorString;
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
         Q_Q(QBluetoothDeviceDiscoveryAgent);
         delete adapter;
@@ -158,7 +158,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
     }
 
     if (!propertiesReply.value().value(QStringLiteral("Powered")).toBool()) {
-        qCDebug(QT_BT_BLUEZ) << "Aborting device discovery due to offline Bluetooth Adapter";
+        qDebug() << "Aborting device discovery due to offline Bluetooth Adapter";
         lastError = QBluetoothDeviceDiscoveryAgent::PoweredOffError;
         errorString = QBluetoothDeviceDiscoveryAgent::tr("Device is powered off");
         delete adapter;
@@ -181,7 +181,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
             To workaround this issue we have to wait for two discovery
             sessions cycles.
         */
-        qCDebug(QT_BT_BLUEZ) << "Using BTLE device discovery workaround.";
+        qDebug() << "Using BTLE device discovery workaround.";
         useExtendedDiscovery = true;
     } else {
         useExtendedDiscovery = false;
@@ -195,7 +195,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::start()
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
         Q_Q(QBluetoothDeviceDiscoveryAgent);
         emit q->error(lastError);
-        qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "ERROR: " << errorString;
+        qDebug() << Q_FUNC_INFO << "ERROR: " << errorString;
         return;
     }
 }
@@ -208,7 +208,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::startBluez5()
     bool ok = false;
     const QString adapterPath = findAdapterForAddress(m_adapterAddress, &ok);
     if (!ok || adapterPath.isEmpty()) {
-        qCWarning(QT_BT_BLUEZ) << "Cannot find Bluez 5 adapter for device search" << ok;
+        qDebug() << "Cannot find Bluez 5 adapter for device search" << ok;
         lastError = QBluetoothDeviceDiscoveryAgent::InputOutputError;
         errorString = QBluetoothDeviceDiscoveryAgent::tr("Cannot find valid Bluetooth adapter.");
         q->error(lastError);
@@ -220,7 +220,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::startBluez5()
                                                   QDBusConnection::systemBus());
 
     if (!adapterBluez5->powered()) {
-        qCDebug(QT_BT_BLUEZ) << "Aborting device discovery due to offline Bluetooth Adapter";
+        qDebug() << "Aborting device discovery due to offline Bluetooth Adapter";
         lastError = QBluetoothDeviceDiscoveryAgent::PoweredOffError;
         errorString = QBluetoothDeviceDiscoveryAgent::tr("Device is powered off");
         delete adapterBluez5;
@@ -269,7 +269,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::stop()
     if (!adapter && !adapterBluez5)
         return;
 
-    qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO;
+    qDebug() << Q_FUNC_INFO;
     pendingCancel = true;
     pendingStart = false;
     if (adapter) {
@@ -287,7 +287,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::_q_deviceFound(const QString &addres
     const QString btName = dict.value(QStringLiteral("Name")).toString();
     quint32 btClass = dict.value(QStringLiteral("Class")).toUInt();
 
-    qCDebug(QT_BT_BLUEZ) << "Discovered: " << address << btName
+    qDebug() << "Discovered: " << address << btName
                          << "Num UUIDs" << dict.value(QStringLiteral("UUIDs")).toStringList().count()
                          << "total device" << discoveredDevices.count() << "cached"
                          << dict.value(QStringLiteral("Cached")).toBool()
@@ -315,18 +315,18 @@ void QBluetoothDeviceDiscoveryAgentPrivate::_q_deviceFound(const QString &addres
     for (int i = 0; i < discoveredDevices.size(); i++) {
         if (discoveredDevices[i].address() == device.address()) {
             if (discoveredDevices[i] == device) {
-                qCDebug(QT_BT_BLUEZ) << "Duplicate: " << address;
+                qDebug() << "Duplicate: " << address;
                 return;
             }
             discoveredDevices.replace(i, device);
             Q_Q(QBluetoothDeviceDiscoveryAgent);
-            qCDebug(QT_BT_BLUEZ) << "Updated: " << address;
+            qDebug() << "Updated: " << address;
 
             emit q->deviceDiscovered(device);
             return; // this works if the list doesn't contain duplicates. Don't let it.
         }
     }
-    qCDebug(QT_BT_BLUEZ) << "Emit: " << address;
+    qDebug() << "Emit: " << address;
     discoveredDevices.append(device);
     Q_Q(QBluetoothDeviceDiscoveryAgent);
     emit q->deviceDiscovered(device);
@@ -352,7 +352,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::deviceFoundBluez5(const QString& dev
     const QString btName = device.alias();
     quint32 btClass = device.classProperty();
 
-    qCDebug(QT_BT_BLUEZ) << "Discovered: " << btAddress.toString() << btName
+    qDebug() << "Discovered: " << btAddress.toString() << btName
                          << "Num UUIDs" << device.uUIDs().count()
                          << "total device" << discoveredDevices.count() << "cached"
                          << "RSSI" << device.rSSI() << "Class" << btClass;
@@ -381,7 +381,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::deviceFoundBluez5(const QString& dev
     for (int i = 0; i < discoveredDevices.size(); i++) {
         if (discoveredDevices[i].address() == deviceInfo.address()) {
             if (discoveredDevices[i] == deviceInfo) {
-                qCDebug(QT_BT_BLUEZ) << "Duplicate: " << btAddress.toString();
+                qDebug() << "Duplicate: " << btAddress.toString();
                 return;
             }
             discoveredDevices.replace(i, deviceInfo);
@@ -398,7 +398,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::deviceFoundBluez5(const QString& dev
 void QBluetoothDeviceDiscoveryAgentPrivate::_q_propertyChanged(const QString &name,
                                                                const QDBusVariant &value)
 {
-    qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << name << value.variant();
+    qDebug() << Q_FUNC_INFO << name << value.variant();
 
     if (name == QLatin1String("Discovering")) {
       if (!value.variant().toBool()) {
@@ -501,7 +501,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::_q_discoveryInterrupted(const QStrin
         return;
 
     if (path == adapterBluez5->path()) {
-        qCWarning(QT_BT_BLUEZ) << "Device discovery aborted due to unexpected adapter changes";
+        qDebug() << "Device discovery aborted due to unexpected adapter changes";
 
         if (discoveryTimer)
             discoveryTimer->stop();
@@ -535,7 +535,7 @@ void QBluetoothDeviceDiscoveryAgentPrivate::_q_PropertiesChanged(const QString &
                                             QDBusConnection::systemBus());
         for (int i = 0; i < discoveredDevices.size(); i++) {
             if (discoveredDevices[i].address().toString() == device.address()) {
-                qCDebug(QT_BT_BLUEZ) << "Updating RSSI for" << device.address()
+                qDebug() << "Updating RSSI for" << device.address()
                          << changed_properties.value(QStringLiteral("RSSI"));
                 discoveredDevices[i].setRssi(
                             changed_properties.value(QStringLiteral("RSSI")).toInt());

@@ -37,7 +37,7 @@
 #include "bluez/bluez_data_p.h"
 #include "bluez/hcimanager_p.h"
 
-#include <QtCore/QLoggingCategory>
+//#include <QtCore/QLoggingCategory>
 #include <QtBluetooth/QBluetoothSocket>
 #include <QtBluetooth/QLowEnergyService>
 
@@ -111,7 +111,7 @@
 
 QT_BEGIN_NAMESPACE
 
-Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
+//Q_DECLARE_LOGGING_CATEGORY(QT_BT_BLUEZ)
 
 static inline QBluetoothUuid convert_uuid128(const quint128 *p)
 {
@@ -133,7 +133,7 @@ static void dumpErrorInformation(const QByteArray &response)
 {
     const char *data = response.constData();
     if (response.size() != 5 || data[0] != ATT_OP_ERROR_RESPONSE) {
-        qCWarning(QT_BT_BLUEZ) << QLatin1String("Not a valid error response");
+        qDebug() << QLatin1String("Not a valid error response");
         return;
     }
 
@@ -181,7 +181,7 @@ static void dumpErrorInformation(const QByteArray &response)
         errorString = QStringLiteral("unknown error code"); break;
     }
 
-    qCDebug(QT_BT_BLUEZ) << "Error1:" << errorString
+    qDebug() << "Error1:" << errorString
              << "last command:" << hex << lastCommand
              << "handle:" << handle;
 }
@@ -231,7 +231,7 @@ void QLowEnergyControllerPrivate::connectToDevice()
 
     int sockfd = l2cpSocket->socketDescriptor();
     if (sockfd < 0) {
-        qCWarning(QT_BT_BLUEZ) << "l2cp socket not initialised";
+        qDebug() << "l2cp socket not initialised";
         setError(QLowEnergyController::UnknownError);
         setState(QLowEnergyController::UnconnectedState);
         return;
@@ -246,7 +246,7 @@ void QLowEnergyControllerPrivate::connectToDevice()
 
     // bind the socket to the local device
     if (::bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        qCWarning(QT_BT_BLUEZ) << qt_error_string(errno);
+        qDebug() << qt_error_string(errno);
         setError(QLowEnergyController::UnknownError);
         setState(QLowEnergyController::UnconnectedState);
         return;
@@ -287,11 +287,11 @@ void QLowEnergyControllerPrivate::l2cpErrorChanged(QBluetoothSocket::SocketError
     switch (e) {
     case QBluetoothSocket::HostNotFoundError:
         setError(QLowEnergyController::UnknownRemoteDeviceError);
-        qCDebug(QT_BT_BLUEZ) << "The passed remote device address cannot be found";
+        qDebug() << "The passed remote device address cannot be found";
         break;
     case QBluetoothSocket::NetworkError:
         setError(QLowEnergyController::NetworkError);
-        qCDebug(QT_BT_BLUEZ) << "Network IO error while talking to LE device";
+        qDebug() << "Network IO error while talking to LE device";
         break;
     case QBluetoothSocket::UnknownSocketError:
     case QBluetoothSocket::UnsupportedProtocolError:
@@ -300,7 +300,7 @@ void QLowEnergyControllerPrivate::l2cpErrorChanged(QBluetoothSocket::SocketError
     default:
         // these errors shouldn't happen -> as it means
         // the code in this file has bugs
-        qCDebug(QT_BT_BLUEZ) << "Unknown l2cp socket error: " << e << l2cpSocket->errorString();
+        qDebug() << "Unknown l2cp socket error: " << e << l2cpSocket->errorString();
         setError(QLowEnergyController::UnknownError);
         break;
     }
@@ -312,7 +312,7 @@ void QLowEnergyControllerPrivate::l2cpErrorChanged(QBluetoothSocket::SocketError
 void QLowEnergyControllerPrivate::l2cpReadyRead()
 {
     const QByteArray reply = l2cpSocket->readAll();
-    qCDebug(QT_BT_BLUEZ) << "Received size:" << reply.size() << "data:" << reply.toHex();
+    qDebug() << "Received size:" << reply.size() << "data:" << reply.toHex();
     if (reply.isEmpty())
         return;
 
@@ -339,7 +339,7 @@ void QLowEnergyControllerPrivate::l2cpReadyRead()
     case ATT_OP_READ_REQUEST:
     case ATT_OP_FIND_INFORMATION_REQUEST:
     case ATT_OP_WRITE_REQUEST:
-        qCWarning(QT_BT_BLUEZ) << "Unexpected message type" << hex << command
+        qDebug() << "Unexpected message type" << hex << command
                                << "will be ignored"   ;
         return;
     default:
@@ -416,7 +416,7 @@ void QLowEnergyControllerPrivate::sendCommand(const QByteArray &packet)
     qint64 result = l2cpSocket->write(packet.constData(),
                                       packet.size());
     if (result == -1) {
-        qCDebug(QT_BT_BLUEZ) << "Cannot write L2CP command:" << hex
+        qDebug() << "Cannot write L2CP command:" << hex
                              << packet.toHex()
                              << l2cpSocket->errorString();
         setError(QLowEnergyController::NetworkError);
@@ -429,7 +429,7 @@ void QLowEnergyControllerPrivate::sendNextPendingRequest()
         return;
 
     const Request &request = openRequests.head();
-//    qCDebug(QT_BT_BLUEZ) << "Sending request, type:" << hex << request.command
+//    qDebug() << "Sending request, type:" << hex << request.command
 //             << request.payload.toHex();
 
     requestPending = true;
@@ -453,7 +453,7 @@ QLowEnergyHandle parseReadByTypeCharDiscovery(
     else
         charData->uuid = convert_uuid128((quint128 *)&data[5]);
 
-    qCDebug(QT_BT_BLUEZ) << "Found handle:" << hex << attributeHandle
+    qDebug() << "Found handle:" << hex << attributeHandle
              << "properties:" << charData->properties
              << "value handle:" << charData->valueHandle
              << "uuid:" << charData->uuid.toString();
@@ -481,7 +481,7 @@ QLowEnergyHandle parseReadByTypeIncludeDiscovery(
     else
         foundServices->append(convert_uuid128((quint128 *) &data[6]));
 
-    qCDebug(QT_BT_BLUEZ) << "Found included service: " << hex
+    qDebug() << "Found included service: " << hex
                          << attributeHandle << "uuid:" << *foundServices;
 
     return attributeHandle;
@@ -518,7 +518,7 @@ void QLowEnergyControllerPrivate::processReply(
         if (mtuSize < ATT_DEFAULT_LE_MTU)
             mtuSize = ATT_DEFAULT_LE_MTU;
 
-        qCDebug(QT_BT_BLUEZ) << "Server MTU:" << mtu << "resulting mtu:" << mtuSize;
+        qDebug() << "Server MTU:" << mtu << "resulting mtu:" << mtuSize;
     }
         break;
     case ATT_OP_READ_BY_GROUP_REQUEST: // in case of error
@@ -558,7 +558,7 @@ void QLowEnergyControllerPrivate::processReply(
             offset += elementLength;
 
 
-            qCDebug(QT_BT_BLUEZ) << "Found uuid:" << uuid << "start handle:" << hex
+            qDebug() << "Found uuid:" << uuid << "start handle:" << hex
                      << start << "end handle:" << end;
 
             QLowEnergyServicePrivate *priv = new QLowEnergyServicePrivate();
@@ -764,7 +764,7 @@ void QLowEnergyControllerPrivate::processReply(
 
         QList<QLowEnergyHandle> keys = request.reference.value<QList<QLowEnergyHandle> >();
         if (keys.isEmpty()) {
-            qCWarning(QT_BT_BLUEZ) << "Descriptor discovery for unknown characteristic received";
+            qDebug() << "Descriptor discovery for unknown characteristic received";
             break;
         }
         QLowEnergyHandle charHandle = keys.first();
@@ -788,7 +788,7 @@ void QLowEnergyControllerPrivate::processReply(
             elementLength = 2 + 16; //sizeof(QLowEnergyHandle) + 128bit uuid
             break;
         default:
-            qCWarning(QT_BT_BLUEZ) << "Unknown format in FIND_INFORMATION_RESPONSE";
+            qDebug() << "Unknown format in FIND_INFORMATION_RESPONSE";
             return;
         }
 
@@ -814,13 +814,13 @@ void QLowEnergyControllerPrivate::processReply(
             quint16 shortUuid = uuid.toUInt16(&ok);
             if (ok && shortUuid >= QLowEnergyServicePrivate::PrimaryService
                    && shortUuid <= QLowEnergyServicePrivate::Characteristic){
-                qCDebug(QT_BT_BLUEZ) << "Suppressing primary/characteristic" << hex << shortUuid;
+                qDebug() << "Suppressing primary/characteristic" << hex << shortUuid;
                 continue;
             }
 
             // ignore value handle
             if (descriptorHandle == p->characteristicList[charHandle].valueHandle) {
-                qCDebug(QT_BT_BLUEZ) << "Suppressing char handle" << hex << descriptorHandle;
+                qDebug() << "Suppressing char handle" << hex << descriptorHandle;
                 continue;
             }
 
@@ -829,7 +829,7 @@ void QLowEnergyControllerPrivate::processReply(
             p->characteristicList[charHandle].descriptorList.insert(
                         descriptorHandle, data);
 
-            qCDebug(QT_BT_BLUEZ) << "Descriptor found, uuid:"
+            qDebug() << "Descriptor found, uuid:"
                                  << uuid.toString()
                                  << "descriptor handle:" << hex << descriptorHandle;
         }
@@ -967,7 +967,7 @@ void QLowEnergyControllerPrivate::processReply(
     }
         break;
     default:
-        qCDebug(QT_BT_BLUEZ) << "Unknown packet: " << response.toHex();
+        qDebug() << "Unknown packet: " << response.toHex();
         break;
     }
 }
@@ -990,7 +990,7 @@ void QLowEnergyControllerPrivate::sendReadByGroupRequest(
 
     QByteArray data(GRP_TYPE_REQ_HEADER_SIZE, Qt::Uninitialized);
     memcpy(data.data(), packet,  GRP_TYPE_REQ_HEADER_SIZE);
-    qCDebug(QT_BT_BLUEZ) << "Sending read_by_group_type request, startHandle:" << hex
+    qDebug() << "Sending read_by_group_type request, startHandle:" << hex
              << start << "endHandle:" << end << type;
 
     Request request;
@@ -1005,7 +1005,7 @@ void QLowEnergyControllerPrivate::sendReadByGroupRequest(
 void QLowEnergyControllerPrivate::discoverServiceDetails(const QBluetoothUuid &service)
 {
     if (!serviceList.contains(service)) {
-        qCWarning(QT_BT_BLUEZ) << "Discovery of unknown service" << service.toString()
+        qDebug() << "Discovery of unknown service" << service.toString()
                                << "not possible";
         return;
     }
@@ -1028,7 +1028,7 @@ void QLowEnergyControllerPrivate::sendReadByTypeRequest(
 
     QByteArray data(READ_BY_TYPE_REQ_HEADER_SIZE, Qt::Uninitialized);
     memcpy(data.data(), packet,  READ_BY_TYPE_REQ_HEADER_SIZE);
-    qCDebug(QT_BT_BLUEZ) << "Sending read_by_type request, startHandle:" << hex
+    qDebug() << "Sending read_by_type request, startHandle:" << hex
              << nextHandle << "endHandle:" << serviceData->endHandle
              << "type:" << attributeType << "packet:" << data.toHex();
 
@@ -1054,14 +1054,16 @@ void QLowEnergyControllerPrivate::readServiceValues(
         const QBluetoothUuid &serviceUuid, bool readCharacteristics)
 {
     quint8 packet[READ_REQUEST_HEADER_SIZE];
+    /*
     if (QT_BT_BLUEZ().isDebugEnabled()) {
         if (readCharacteristics)
-            qCDebug(QT_BT_BLUEZ) << "Reading characteristic values for"
+            qDebug() << "Reading characteristic values for"
                          << serviceUuid.toString();
         else
-            qCDebug(QT_BT_BLUEZ) << "Reading descriptor values for"
+            qDebug() << "Reading descriptor values for"
                          << serviceUuid.toString();
     }
+    */
 
     QSharedPointer<QLowEnergyServicePrivate> service = serviceList.value(serviceUuid);
 
@@ -1154,7 +1156,7 @@ void QLowEnergyControllerPrivate::readServiceValuesByOffset(
     QLowEnergyHandle handleToRead = charHandle;
     if (descriptorHandle) {
         handleToRead = descriptorHandle;
-        qCDebug(QT_BT_BLUEZ) << "Reading descriptor via blob request"
+        qDebug() << "Reading descriptor via blob request"
                              << hex << descriptorHandle;
     } else {
         //charHandle is not the char's value handle
@@ -1163,7 +1165,7 @@ void QLowEnergyControllerPrivate::readServiceValuesByOffset(
         if (!service.isNull()
                 && service->characteristicList.contains(charHandle)) {
             handleToRead = service->characteristicList[charHandle].valueHandle;
-            qCDebug(QT_BT_BLUEZ) << "Reading characteristic via blob request"
+            qDebug() << "Reading characteristic via blob request"
                                  << hex << handleToRead;
         } else {
             Q_ASSERT(false);
@@ -1187,7 +1189,7 @@ void QLowEnergyControllerPrivate::readServiceValuesByOffset(
 void QLowEnergyControllerPrivate::discoverServiceDescriptors(
         const QBluetoothUuid &serviceUuid)
 {
-    qCDebug(QT_BT_BLUEZ) << "Discovering descriptor values for"
+    qDebug() << "Discovering descriptor values for"
                          << serviceUuid.toString();
     QSharedPointer<QLowEnergyServicePrivate> service = serviceList.value(serviceUuid);
     // start handle of all known characteristics
@@ -1210,26 +1212,28 @@ void QLowEnergyControllerPrivate::processUnsolicitedReply(const QByteArray &payl
     bool isNotification = (data[0] == ATT_OP_HANDLE_VAL_NOTIFICATION);
     const QLowEnergyHandle changedHandle = bt_get_le16(&data[1]);
 
+    /*
     if (QT_BT_BLUEZ().isDebugEnabled()) {
         if (isNotification)
-            qCDebug(QT_BT_BLUEZ) << "Change notification for handle" << hex << changedHandle;
+            qDebug() << "Change notification for handle" << hex << changedHandle;
         else
-            qCDebug(QT_BT_BLUEZ) << "Change indication for handle" << hex << changedHandle;
+            qDebug() << "Change indication for handle" << hex << changedHandle;
     }
+    */
 
     const QLowEnergyCharacteristic ch = characteristicForHandle(changedHandle);
     if (ch.isValid() && ch.handle() == changedHandle) {
         updateValueOfCharacteristic(ch.attributeHandle(), payload.mid(3), NEW_VALUE);
         emit ch.d_ptr->characteristicChanged(ch, payload.mid(3));
     } else {
-        qCWarning(QT_BT_BLUEZ) << "Cannot find matching characteristic for "
+        qDebug() << "Cannot find matching characteristic for "
                                   "notification/indication";
     }
 }
 
 void QLowEnergyControllerPrivate::exchangeMTU()
 {
-    qCDebug(QT_BT_BLUEZ) << "Exchanging MTU";
+    qDebug() << "Exchanging MTU";
 
     quint8 packet[MTU_EXCHANGE_HEADER_SIZE];
     packet[0] = ATT_OP_EXCHANGE_MTU_REQUEST;
@@ -1250,7 +1254,7 @@ int QLowEnergyControllerPrivate::securityLevel() const
 {
     int socket = l2cpSocket->socketDescriptor();
     if (socket < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Invalid l2cp socket, aborting getting of sec level";
+        qDebug() << "Invalid l2cp socket, aborting getting of sec level";
         return -1;
     }
 
@@ -1259,7 +1263,7 @@ int QLowEnergyControllerPrivate::securityLevel() const
     memset(&secData, 0, length);
 
     if (getsockopt(socket, SOL_BLUETOOTH, BT_SECURITY, &secData, &length) == 0) {
-        qCDebug(QT_BT_BLUEZ) << "Current l2cp sec level:" << secData.level;
+        qDebug() << "Current l2cp sec level:" << secData.level;
         return secData.level;
     }
 
@@ -1292,7 +1296,7 @@ bool QLowEnergyControllerPrivate::setSecurityLevel(int level)
 
     int socket = l2cpSocket->socketDescriptor();
     if (socket < 0) {
-        qCWarning(QT_BT_BLUEZ) << "Invalid l2cp socket, aborting setting of sec level";
+        qDebug() << "Invalid l2cp socket, aborting setting of sec level";
         return false;
     }
 
@@ -1302,7 +1306,7 @@ bool QLowEnergyControllerPrivate::setSecurityLevel(int level)
     secData.level = level;
 
     if (setsockopt(socket, SOL_BLUETOOTH, BT_SECURITY, &secData, length) == 0) {
-        qCDebug(QT_BT_BLUEZ) << "Setting new l2cp sec level:" << secData.level;
+        qDebug() << "Setting new l2cp sec level:" << secData.level;
         return true;
     }
 
@@ -1323,7 +1327,7 @@ bool QLowEnergyControllerPrivate::setSecurityLevel(int level)
     }
 
     if (setsockopt(socket, SOL_L2CAP, L2CAP_LM, &optval, sizeof(optval)) == 0) {
-        qDebug(QT_BT_BLUEZ) << "Old l2cp sec level:" << optval;
+        qDebug() << "Old l2cp sec level:" << optval;
         return true;
     }
 
@@ -1338,7 +1342,7 @@ void QLowEnergyControllerPrivate::discoverNextDescriptor(
     Q_ASSERT(!pendingCharHandles.isEmpty());
     Q_ASSERT(!serviceData.isNull());
 
-    qCDebug(QT_BT_BLUEZ) << "Sending find_info request" << hex
+    qDebug() << "Sending find_info request" << hex
                          << pendingCharHandles << startingHandle;
 
     quint8 packet[FIND_INFO_REQUEST_HEADER_SIZE];
@@ -1380,7 +1384,7 @@ void QLowEnergyControllerPrivate::sendNextPrepareWriteRequest(
         targetHandle = characteristicForHandle(handle).handle();
 
     if (!targetHandle) {
-        qCWarning(QT_BT_BLUEZ) << "sendNextPrepareWriteRequest cancelled due to invalid handle"
+        qDebug() << "sendNextPrepareWriteRequest cancelled due to invalid handle"
                                << handle;
         return;
     }
@@ -1390,7 +1394,7 @@ void QLowEnergyControllerPrivate::sendNextPrepareWriteRequest(
     bt_put_unaligned(htobs(targetHandle), (quint16 *) &packet[1]); // attribute handle
     bt_put_unaligned(htobs(offset), (quint16 *) &packet[3]); // offset into newValue
 
-    qCDebug(QT_BT_BLUEZ) << "Writing long characteristic (prepare):"
+    qDebug() << "Writing long characteristic (prepare):"
                          << hex << handle;
 
 
@@ -1436,7 +1440,7 @@ void QLowEnergyControllerPrivate::sendExecuteWriteRequest(
     QByteArray data(EXECUTE_WRITE_HEADER_SIZE, Qt::Uninitialized);
     memcpy(data.data(), packet, EXECUTE_WRITE_HEADER_SIZE);
 
-    qCDebug(QT_BT_BLUEZ) << "Sending Execute Write Request for long characteristic value"
+    qDebug() << "Sending Execute Write Request for long characteristic value"
                          << hex << attrHandle;
 
     Request request;
@@ -1489,7 +1493,7 @@ void QLowEnergyControllerPrivate::writeCharacteristic(
     memcpy(data.data(), packet, WRITE_REQUEST_HEADER_SIZE);
     memcpy(&(data.data()[WRITE_REQUEST_HEADER_SIZE]), newValue.constData(), newValue.size());
 
-    qCDebug(QT_BT_BLUEZ) << "Writing characteristic" << hex << charHandle
+    qDebug() << "Writing characteristic" << hex << charHandle
                          << "(size:" << size << "with response:" << writeWithResponse << ")";
 
     // Advantage of write without response is the quick turnaround.
@@ -1533,7 +1537,7 @@ void QLowEnergyControllerPrivate::writeDescriptor(
     memcpy(data.data(), packet, WRITE_REQUEST_HEADER_SIZE);
     memcpy(&(data.data()[WRITE_REQUEST_HEADER_SIZE]), newValue.constData(), newValue.size());
 
-    qCDebug(QT_BT_BLUEZ) << "Writing descriptor" << hex << descriptorHandle
+    qDebug() << "Writing descriptor" << hex << descriptorHandle
                          << "(size:" << size << ")";
 
     Request request;
@@ -1564,7 +1568,7 @@ bool QLowEnergyControllerPrivate::increaseEncryptLevelfRequired(quint8 errorCode
         if (!hciManager->monitorEvent(HciManager::EncryptChangeEvent))
             return false;
         if (securityLevelValue != BT_SECURITY_HIGH) {
-            qCDebug(QT_BT_BLUEZ) << "Requesting encrypted link";
+            qDebug() << "Requesting encrypted link";
             if (setSecurityLevel(BT_SECURITY_HIGH))
                 return true;
         }

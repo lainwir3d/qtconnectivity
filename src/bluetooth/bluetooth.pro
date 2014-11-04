@@ -159,3 +159,9 @@ OTHER_FILES +=
 
 HEADERS += $$PUBLIC_HEADERS $$PRIVATE_HEADERS
 
+CONFIG(debug, debug|release) {
+    DEFINES += DEBUG
+}
+else {
+    DEFINES += QT_NO_DEBUG_OUTPUT
+}

@@ -361,17 +361,18 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
 
     qCDebug(QT_BT_BLUEZ) << Q_FUNC_INFO << "created" << address.toString();
 
-    QDBusPendingReply<QDBusObjectPath> deviceObjectPath = *watcher;
+    QDBusPendingReply<QDBusObjectPath> deviceObjectPath = adapter->FindDevice(address.toString());
+    deviceObjectPath.waitForFinished();
     if (deviceObjectPath.isError()) {
-        if (deviceObjectPath.error().name() != QStringLiteral("org.bluez.Error.AlreadyExists")) {
+        if (deviceObjectPath.error().name() != QStringLiteral("org.bluez.Error.DoesNotExist")) {
             delete adapter;
             adapter = 0;
             _q_serviceDiscoveryFinished();
-            qCDebug(QT_BT_BLUEZ) << "Create device failed Error: " << error << deviceObjectPath.error().name();
+            qCDebug(QT_BT_BLUEZ) << "Can't find device. Can't recover, unmanaged error: " << error << deviceObjectPath.error().name();
             return;
         }
 
-        deviceObjectPath = adapter->FindDevice(address.toString());
+        deviceObjectPath = *watcher;
         deviceObjectPath.waitForFinished();
         if (deviceObjectPath.isError()) {
             delete adapter;
@@ -382,7 +383,7 @@ void QBluetoothServiceDiscoveryAgentPrivate::_q_createdDevice(QDBusPendingCallWa
                 emit q->error(error);
             }
             _q_serviceDiscoveryFinished();
-            qCDebug(QT_BT_BLUEZ) << "Can't find device after creation Error: " << error << deviceObjectPath.error().name();
+            qCDebug(QT_BT_BLUEZ) << "Can't create device after finding unsuccessful. Error: " << error << deviceObjectPath.error().name();
             return;
         }
     }
